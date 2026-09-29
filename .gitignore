@@ -1,0 +1,56 @@
+# Build products and caches
+build/
+out/
+dist/
+obj/
+bin/
+*.o
+*.obj
+*.a
+*.so
+*.dll
+*.dylib
+*.exe
+*.pdb
+*.dSYM/
+.cache/
+ccache/
+
+# User-supplied firmware and proprietary dumps
+roms/
+firmware/
+dictrom/
+private/
+*.rom
+*.bin
+*.hex
+*.s19
+*.srec
+
+# Mutable machine data
+nvram/
+ram-images/
+states/
+snapshots/
+captures/
+test-output/
+*.nv
+*.nvram
+*.sta
+*.state
+*.chd
+
+# Local configuration
+*.ini
+*.cfg
+.env
+.env.*
+!.env.example
+
+# Editors and operating systems
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*~
+*.swp
