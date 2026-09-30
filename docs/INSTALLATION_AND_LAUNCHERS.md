@@ -53,3 +53,17 @@ Launcher acceptance requires proving:
 - both variants report their identity;
 - stable and diagnostic configurations, NVRAM, states and logs remain isolated;
 - uninstalling or replacing the stable build does not damage the private diagnostic working tree.
+
+
+## Prepared Linux implementation
+
+The R0 preparation branch now provides:
+
+- `packaging/as2k-launcher.sh` — installed stable launcher with isolated XDG paths;
+- `packaging/as2k.desktop.in` — application-menu template;
+- `scripts/install-stable.sh` — install a validated reduced binary under a prefix;
+- `scripts/uninstall-stable.sh` — remove program/menu files without deleting user data;
+- `scripts/validate-stable-static.sh` — fail-closed static gate for fixed-ROM leakage and packaging syntax;
+- `docs/STABLE_INSTALL_LAYOUT.md` — exact system/user path contract.
+
+These files are preparation artifacts until the reduced native binary is compiled and validated on T160. They do not authorize installing an unvalidated build.
