@@ -452,24 +452,21 @@ void asma2k_state::send_sink_begin()
 		m_send_sink.reset();
 	}
 
-	std::string rom_directory;
-	path_iterator rom_paths(machine().options().media_path());
-	if (!rom_paths.next(rom_directory) || rom_directory.empty())
-	{
-		logerror("AS2K_TX TEXT_SINK_OPEN_FAILED reason=no_rom_directory\n");
-		m_send_sink_active = false;
-		return;
-	}
+	// Stable output follows MAME's configured output directory rather than
+	// the firmware/DictROM source path.  The installed launcher points this
+	// at the stable XDG data directory, keeping user output separate from
+	// proprietary input images and from as2k-diag.
+	std::string const output_directory(machine().options().snapshot_directory());
 
 	m_send_sink = std::make_unique<emu_file>(
-		rom_directory,
+		output_directory,
 		OPEN_FLAG_WRITE | OPEN_FLAG_CREATE | OPEN_FLAG_CREATE_PATHS);
 
 	std::error_condition const err = m_send_sink->open("send.txt");
 	if (err)
 	{
 		logerror("AS2K_TX TEXT_SINK_OPEN_FAILED path=%s%s%s error=%s\n",
-			rom_directory,
+			output_directory,
 			PATH_SEPARATOR,
 			"send.txt",
 			err.message());
