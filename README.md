@@ -4,7 +4,7 @@ A compact, reproducible emulator for the AlphaSmart 2000, derived from the MAME 
 
 ## Status
 
-**R0 — baseline and dependency-closure phase.**
+**R0 — stable source shaping and dependency-closure phase.**
 
 The first milestone is a dedicated `as2k` subtarget that:
 
@@ -15,7 +15,9 @@ The first milestone is a dedicated `as2k` subtarget that:
 - preserves the validated keyboard, 40×4 LCD, NVRAM, PC Send and printing behaviour;
 - demonstrates the expected reduction in clean-build time, incremental-build time and disk use.
 
-No emulator source has been imported into this repository yet. Code will enter only through reviewed, traceable commits after its dependency and license metadata have been verified.
+The first traceable AS2K driver donor has now been imported on the preparation branch `prep/as2k-stable-reduced-r0`. Stable source shaping is in progress there; `main` remains the release baseline until native compilation and runtime validation close R0.
+
+The preparation branch already removes fixed proprietary ROM-set declarations, exposes mandatory external Firmware and DictROM image devices, isolates stable mutable data/output, and contains the system-installation launcher/desktop scripts. Direct DictROM Bootstrap, stable printing completion and the reduced dependency closure remain build-gated work.
 
 ## Two functional variants
 
