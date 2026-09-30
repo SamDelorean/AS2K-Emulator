@@ -21,10 +21,10 @@ No emulator source has been imported into this repository yet. Code will enter o
 
 Only two functional AS2K emulator variants are intended on the development machine:
 
-1. **AS2K stable** — built from this public repository and installed correctly in the system as the normal emulator and human-test bench.
-2. **`as2k-diag`** — private instrumented TestLab build for Commander, development and automated diagnostics. It remains executable from its private Git working directory and is not installed system-wide.
+1. **AS2K stable** — built from this public repository and installed correctly in the system as the normal emulator and human-test bench. It must be reachable through an application-menu launcher and the stable `as2k` command.
+2. **`as2k-diag`** — private instrumented TestLab build for Commander, development and automated diagnostics. It remains executable from its private Git working directory through a project-local launcher and is not installed system-wide.
 
-They must share the same hardware behaviour, image formats and stable regression contract. Instrumentation must not silently change emulated behaviour. See [docs/RUNTIME_VARIANTS.md](docs/RUNTIME_VARIANTS.md).
+They must share the same hardware behaviour, image formats and stable regression contract. Instrumentation must not silently change emulated behaviour. See [docs/RUNTIME_VARIANTS.md](docs/RUNTIME_VARIANTS.md) and [docs/INSTALLATION_AND_LAUNCHERS.md](docs/INSTALLATION_AND_LAUNCHERS.md).
 
 ## Intended stable scope
 

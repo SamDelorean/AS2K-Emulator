@@ -9,6 +9,8 @@ This document is the canonical product boundary for the reduced AS2K emulator.
 | Primary use | Human tests and normal daily use | Commander automation, development and diagnostics |
 | Source visibility | Public | Private |
 | Installation | Installed correctly in the system | Not installed; executed from its private Git working/build directory |
+| User access | Application-menu launcher plus stable `as2k` command; optional desktop shortcut | Project-local `run-as2k-diag` launcher and Commander entrypoint |
+| Launcher target | Installed stable binary, never a temporary build path | Private repository-relative executable and diagnostic configuration |
 | Hardware behaviour | Canonical stable contract | Must match stable unless an explicitly labelled diagnostic fault injection is active |
 | Configuration | Stable-specific location | Separate diagnostic-specific location |
 | Mutable images/states | External, user-controlled | External, isolated from stable by default |
@@ -16,6 +18,8 @@ This document is the canonical product boundary for the reduced AS2K emulator.
 | Printing | CUPS/PDF user output | May additionally capture low-level printer activity and traces |
 
 Only these two functional variants should be installed or built for routine use. This rule does not delete or forbid preservation of existing Git repositories and worktrees.
+
+Every launcher must work from an arbitrary current directory, display which variant is being started and avoid hard-coded firmware, DictROM, NVRAM or user-document paths. See [INSTALLATION_AND_LAUNCHERS.md](INSTALLATION_AND_LAUNCHERS.md).
 
 ## Stable human-test features
 
