@@ -15,6 +15,8 @@
 ****************************************************************************/
 
 #include "emu.h"
+#include "bus/generic/carts.h"
+#include "bus/generic/slot.h"
 #include "fileio.h"
 #include "emuopts.h"
 #include "cpu/mc68hc11/mc68hc11.h"
@@ -94,7 +96,8 @@ public:
 	asma2k_state(const machine_config &mconfig, device_type type, const char *tag)
 		: alphasmart_state(mconfig, type, tag)
 		, m_io_view(*this, "io")
-		, m_dictbank(*this, "dictbank")
+		, m_firmware(*this, "firmware")
+		, m_dictrom(*this, "dictrom")
 		, m_pc_connected(*this, "PC_CONNECTED")
 	{
 	}
@@ -104,8 +107,13 @@ public:
 
 protected:
 	virtual void machine_start() override ATTR_COLD;
+	virtual void machine_reset() override ATTR_COLD;
 
 private:
+	DECLARE_DEVICE_IMAGE_LOAD_MEMBER(firmware_load);
+	DECLARE_DEVICE_IMAGE_LOAD_MEMBER(dictrom_load);
+	uint8_t firmware_r(offs_t offset);
+	uint8_t dictrom_r(offs_t offset);
 	void lcd_ctrl_w(uint8_t data);
 	uint8_t asma2k_port_a_r();
 	void asma2k_port_d_w(uint8_t data);
@@ -121,10 +129,12 @@ private:
 	void asma2k_mem(address_map &map) ATTR_COLD;
 
 	memory_view m_io_view;
-	required_memory_bank m_dictbank;
+	required_device<generic_slot_device> m_firmware;
+	required_device<generic_slot_device> m_dictrom;
 	required_ioport m_pc_connected;
 
-	uint8_t m_lcd_ctrl;
+	uint8_t m_lcd_ctrl = 0;
+	uint8_t m_dict_bank = 0;
 	uint16_t m_pc_frame = 0;
 	uint8_t m_pc_frame_bits = 0;
 	bool m_pc_set2_break = false;
@@ -238,7 +248,7 @@ void asma2k_state::lcd_ctrl_w(uint8_t data)
 {
 	uint8_t changed = (m_lcd_ctrl ^ data) & data;
 	update_lcdc(changed & 0x01, changed & 0x02);
-	m_dictbank->set_entry((m_port_a & 0x30) >> 3 | (data & 0x80) >> 7);
+	m_dict_bank = ((m_port_a & 0x30) >> 3) | ((data & 0x80) >> 7);
 	m_lcd_ctrl = data;
 }
 
@@ -729,7 +739,7 @@ void asma2k_state::port_a_w(uint8_t data)
 	m_io_view.select(BIT(data, 6));
 
 	m_rambank->set_entry(((data>>4) & 0x03));
-	m_dictbank->set_entry((data & 0x30) >> 3 | (m_lcd_ctrl & 0x80) >> 7);
+	m_dict_bank = ((data & 0x30) >> 3) | ((m_lcd_ctrl & 0x80) >> 7);
 	m_port_a = data;
 }
 
@@ -740,11 +750,68 @@ void asma2k_state::asma2k_mem(address_map &map)
 	map(0x0000, 0x7fff).view(m_io_view);
 	m_io_view[0](0x2000, 0x2000).rw(FUNC(asma2k_state::kb_r), FUNC(asma2k_state::kb_matrixh_w));
 	m_io_view[0](0x4000, 0x4000).w(FUNC(asma2k_state::lcd_ctrl_w));
-	m_io_view[0](0x4000, 0x7fff).bankr("dictbank");
+	m_io_view[0](0x4000, 0x7fff).r(FUNC(asma2k_state::dictrom_r));
 	m_io_view[1](0x0000, 0x7fff).bankrw("rambank");
-	map(0x8000, 0xffff).rom().region("maincpu", 0);
+	map(0x8000, 0xffff).r(FUNC(asma2k_state::firmware_r));
 	map(0x9000, 0x9000).w(FUNC(asma2k_state::kb_matrixl_w));
 }
+
+DEVICE_IMAGE_LOAD_MEMBER(asma2k_state::firmware_load)
+{
+	auto &slot = downcast<generic_slot_device &>(image.device());
+	uint32_t const source_size = slot.common_get_size("rom");
+
+	// Known ZPSD dumps contain either the 32 KiB executable image alone or
+	// the executable image followed by mapper/PAL data.  Stable emulation
+	// consumes only the executable 0x8000-byte window and leaves the source
+	// file untouched.
+	if (source_size != 0x8000 && source_size != 0x81e5)
+		return std::make_pair(
+				image_error::INVALIDLENGTH,
+				"Unsupported AS2K firmware image size (expected 0x8000 or 0x81e5 bytes)");
+
+	if (!slot.get_rom_base())
+		slot.rom_alloc(0x8000, GENERIC_ROM8_WIDTH, ENDIANNESS_BIG);
+
+	if (slot.get_rom_size() != 0x8000)
+		return std::make_pair(image_error::INVALIDLENGTH, "Internal firmware socket size mismatch");
+
+	slot.common_load_rom(slot.get_rom_base(), 0x8000, "rom");
+	return std::make_pair(std::error_condition(), std::string());
+}
+
+DEVICE_IMAGE_LOAD_MEMBER(asma2k_state::dictrom_load)
+{
+	auto &slot = downcast<generic_slot_device &>(image.device());
+	uint32_t const source_size = slot.common_get_size("rom");
+
+	if (source_size != 0x20000)
+		return std::make_pair(
+				image_error::INVALIDLENGTH,
+				"Unsupported AS2K DictROM image size (expected 0x20000 bytes)");
+
+	if (!slot.get_rom_base())
+		slot.rom_alloc(0x20000, GENERIC_ROM8_WIDTH, ENDIANNESS_BIG);
+
+	if (slot.get_rom_size() != 0x20000)
+		return std::make_pair(image_error::INVALIDLENGTH, "Internal DictROM socket size mismatch");
+
+	slot.common_load_rom(slot.get_rom_base(), 0x20000, "rom");
+	return std::make_pair(std::error_condition(), std::string());
+}
+
+uint8_t asma2k_state::firmware_r(offs_t offset)
+{
+	return m_firmware->get_rom_base() ? m_firmware->read_rom(offset & 0x7fff) : 0xff;
+}
+
+uint8_t asma2k_state::dictrom_r(offs_t offset)
+{
+	return m_dictrom->get_rom_base()
+			? m_dictrom->read_rom((uint32_t(m_dict_bank) << 14) | (offset & 0x3fff))
+			: 0xff;
+}
+
 
 /* Input ports */
 static INPUT_PORTS_START( alphasmart )
@@ -1082,8 +1149,17 @@ void asma2k_state::machine_start()
 {
 	alphasmart_state::machine_start();
 
-	m_dictbank->configure_entries(0, 8, memregion("spellcheck")->base(), 0x4000);
-	m_dictbank->set_entry(0);
+	save_item(NAME(m_lcd_ctrl));
+	save_item(NAME(m_dict_bank));
+}
+
+void asma2k_state::machine_reset()
+{
+	alphasmart_state::machine_reset();
+
+	m_lcd_ctrl = 0;
+	m_dict_bank = 0;
+	m_io_view.select(0);
 }
 
 void alphasmart_state::machine_reset()
@@ -1131,6 +1207,15 @@ void asma2k_state::asma2k(machine_config &config)
 	m_maincpu->in_pa_callback().set(FUNC(asma2k_state::asma2k_port_a_r));
 	m_maincpu->out_pd_callback().set(FUNC(asma2k_state::asma2k_port_d_w));
 	m_maincpu->set_addrmap(AS_PROGRAM, &asma2k_state::asma2k_mem);
+
+	// External user-supplied images.  These devices are intentionally not
+	// tied to MAME ROM-set filenames or checksums.  Mounting an image uses
+	// the normal MAME image/file UI and resets the machine.
+	GENERIC_SOCKET(config, m_firmware, generic_plain_slot, "as2k_firmware", "bin,rom,zpsd");
+	m_firmware->set_device_load(FUNC(asma2k_state::firmware_load));
+
+	GENERIC_SOCKET(config, m_dictrom, generic_plain_slot, "as2k_dictrom", "bin,rom");
+	m_dictrom->set_device_load(FUNC(asma2k_state::dictrom_load));
 }
 
 // AS2K-only reduced target: AlphaSmart Pro ROM registration intentionally omitted.
@@ -1142,19 +1227,6 @@ void asma2k_state::asma2k(machine_config &config)
 // LCD: 2x KS0066F05 + 4x KS0063B
 // Optional IrDA sub board
 ROM_START( asma2k )
-	ROM_REGION( 0x10000, "maincpu", 0 )
-	/*
-	    These dumps 33,253 bytes each, probably contain 32768 bytes of rom,
-	    plus the remaining area is pal data for the mapper/io pal, all of
-	    which is integrated onto one plcc44 chip called a zpsd211r.
-	*/
-	ROM_SYSTEM_BIOS( 0, "v314", "v3.14" )
-	ROMX_LOAD( "alphasmart__2000__v3.1.4__h4.zpsd211r.plcc44.bin",  0x0000, 0x81e5, CRC(49487f6d) SHA1(e0b777dc68c671c31ba808e214fb9d2573b9a853), ROM_BIOS(0) )
-	ROM_SYSTEM_BIOS( 1, "v308", "v3.08" )
-	ROMX_LOAD( "alphasmart__2000__v3.0.8.zpsd211r.plcc44.bin",  0x0000, 0x81e5, CRC(0b3b1a0c) SHA1(97878819188a1ec40052fbce9d5a5059728d5aec), ROM_BIOS(1) )
-
-	ROM_REGION( 0x20000, "spellcheck", 0 )
-	ROM_LOAD( "dictrom__v1.stm_m27c1001-1501.plcc32.bin", 0x00000, 0x20000, CRC(a143949c) SHA1(033094bb850c614008b4ecc2eefbcb01b8a2bcda) )
 ROM_END
 
 } // anonymous namespace
