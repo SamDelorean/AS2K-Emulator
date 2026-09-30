@@ -67,3 +67,33 @@ Before this branch can merge to `main`:
 - confirm no proprietary/private material is present.
 
 No cleanup of existing Git repositories is authorized by this preparation branch.
+
+
+## Static implementation checkpoint — 2026-09-30
+
+The preparation branch now contains code, not only design notes.
+
+### Implemented statically
+
+- AS2K-only machine registration; AlphaSmart Pro ROM registration is excluded from the reduced target.
+- Fixed AS2K BIOS/DictROM declarations removed from the driver.
+- Mandatory external user-loadable Firmware and DictROM image sockets.
+- Firmware loader accepts either a 0x8000 executable image or a 0x81E5 ZPSD-style dump and maps only the first 0x8000 bytes without modifying the source.
+- DictROM loader accepts 0x20000 bytes and preserves the eight 0x4000-byte hardware banks.
+- Normal reset remains the default boot mode.
+- `Direct DictROM bootstrap` is implemented as the documented post-stage-0 machine state, with bus/bank/device state established before PC is committed to 0x4000.
+- PC Send remains based on physical port traffic from the validated donor; its stable text output now follows the configured stable output directory instead of the firmware/media path.
+- Linux system launcher, application-menu template, installer, uninstaller and static validation gate are present.
+
+### Build-gated / not yet closed
+
+- native C++ compile against the reduced dependency closure;
+- MAME `-validate`;
+- runtime file-manager behavior for the two mandatory image sockets;
+- normal-boot regression with v3.1.4 reference and at least one alternate compatible firmware;
+- Direct DictROM bootstrap runtime regression against the known stage-0 contract;
+- stable CUPS/PDF print path;
+- full reduced dependency closure and build-system finalization;
+- installation on T160 and final system/menu acceptance tests.
+
+No item in the second list may be promoted to PASS without T160/Commander evidence.
