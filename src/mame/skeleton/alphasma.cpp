@@ -99,6 +99,7 @@ public:
 		, m_firmware(*this, "firmware")
 		, m_dictrom(*this, "dictrom")
 		, m_pc_connected(*this, "PC_CONNECTED")
+		, m_boot_mode(*this, "BOOT_MODE")
 	{
 	}
 
@@ -114,6 +115,8 @@ private:
 	DECLARE_DEVICE_IMAGE_LOAD_MEMBER(dictrom_load);
 	uint8_t firmware_r(offs_t offset);
 	uint8_t dictrom_r(offs_t offset);
+	bool set_cpu_state(char const *symbol, uint64_t value);
+	void apply_direct_dictrom_bootstrap();
 	void lcd_ctrl_w(uint8_t data);
 	uint8_t asma2k_port_a_r();
 	void asma2k_port_d_w(uint8_t data);
@@ -132,6 +135,7 @@ private:
 	required_device<generic_slot_device> m_firmware;
 	required_device<generic_slot_device> m_dictrom;
 	required_ioport m_pc_connected;
+	required_ioport m_boot_mode;
 
 	uint8_t m_lcd_ctrl = 0;
 	uint8_t m_dict_bank = 0;
@@ -810,6 +814,56 @@ uint8_t asma2k_state::dictrom_r(offs_t offset)
 }
 
 
+bool asma2k_state::set_cpu_state(char const *symbol, uint64_t value)
+{
+	for (auto const &entry : m_maincpu->state_entries())
+	{
+		if (entry->symbol() == symbol)
+		{
+			m_maincpu->set_state_int(entry->index(), value);
+			return true;
+		}
+	}
+
+	return false;
+}
+
+void asma2k_state::apply_direct_dictrom_bootstrap()
+{
+	// Stable Direct DictROM Bootstrap models the machine state after the
+	// ATtiny/HC11 bootstrap stage-0 has completed.  It intentionally does not
+	// emulate the SCI download or temporary HPRIO special-mode transition.
+	//
+	// The independently authored stage-0 contract is:
+	//   SEI; LDS #$00C3; CONFIG|=$04; MDA=1;
+	//   PORTA&=~$70; CTRL=$04; clear RBOOT/SMOD; JMP $4000.
+	//
+	// Apply bus/device state first and PC last.  This is therefore not an
+	// arbitrary PC jump: every observable post-bootstrap precondition modeled
+	// by the stable emulator is established before DictROM executes.
+	port_a_w(0x00);
+	lcd_ctrl_w(0x04);
+
+	bool ok = true;
+	ok &= set_cpu_state("SP", 0x00c3);
+	ok &= set_cpu_state("CCR", 0x00d0); // S|X|I remain set
+	ok &= set_cpu_state("A", 0x0004);
+	ok &= set_cpu_state("B", 0x0000);
+	ok &= set_cpu_state("IX", 0x0000);
+	ok &= set_cpu_state("IY", 0x0000);
+	ok &= set_cpu_state("CONFIG", 0x0004);
+
+	if (!ok)
+		fatalerror("AS2K stable Direct DictROM Bootstrap: HC11 state contract unavailable");
+
+	// Entry is committed only after all other preconditions have succeeded.
+	if (!set_cpu_state("PC", 0x4000))
+		fatalerror("AS2K stable Direct DictROM Bootstrap: PC state unavailable");
+
+	logerror("AS2K stable Direct DictROM Bootstrap: PC=4000 SP=00C3 CCR=D0 A=04 PA=00 CTRL=04 bank=0\n");
+}
+
+
 /* Input ports */
 static INPUT_PORTS_START( alphasmart )
 	PORT_START("COL.0")
@@ -956,6 +1010,11 @@ static INPUT_PORTS_START( alphasmart )
 	PORT_BIT(0x20, IP_ACTIVE_LOW, IPT_UNUSED)
 	PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_UNUSED)
 	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_RSHIFT) PORT_CHAR(UCHAR_MAMEKEY(RSHIFT)) PORT_CHANGED_MEMBER(DEVICE_SELF, FUNC(alphasmart_state::kb_irq), 0)
+
+	PORT_START("BOOT_MODE")
+	PORT_CONFNAME(0x01, 0x00, "Startup mode")
+	PORT_CONFSETTING(0x00, "Normal firmware boot")
+	PORT_CONFSETTING(0x01, "Direct DictROM bootstrap")
 
 	PORT_START("BATTERY")
 	PORT_CONFNAME(0x01, 0x01, "Battery status")
@@ -1157,6 +1216,9 @@ void asma2k_state::machine_reset()
 	m_lcd_ctrl = 0;
 	m_dict_bank = 0;
 	m_io_view.select(0);
+
+	if (BIT(m_boot_mode->read(), 0))
+		apply_direct_dictrom_bootstrap();
 }
 
 void alphasmart_state::machine_reset()
