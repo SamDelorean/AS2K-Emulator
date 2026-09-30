@@ -818,7 +818,7 @@ bool asma2k_state::set_cpu_state(char const *symbol, uint64_t value)
 {
 	for (auto const &entry : m_maincpu->state_entries())
 	{
-		if (entry->symbol() == symbol)
+		if (!strcmp(entry->symbol(), symbol))
 		{
 			m_maincpu->set_state_int(entry->index(), value);
 			return true;
