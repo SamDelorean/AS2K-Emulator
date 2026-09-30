@@ -1133,14 +1133,8 @@ void asma2k_state::asma2k(machine_config &config)
 	m_maincpu->set_addrmap(AS_PROGRAM, &asma2k_state::asma2k_mem);
 }
 
-// MCU: MC68HC11D0P
-// NVRAM: KM681000ALP-7L (or TC551001BPL-85L) + CR2032 battery
-// XTAL: 8.000MHz
-// LCD: 2x KS0066F05 + 8x HD44100H
-ROM_START( asmapro )
-	ROM_REGION( 0x8000, "maincpu", 0 )
-	ROM_LOAD( "alphasmartpro212.rom",  0x0000, 0x8000, CRC(896ddf1c) SHA1(c3c6a421c9ced92db97431d04b4a3f09a39de716) )   // Checksum 8D24 on label
-ROM_END
+// AS2K-only reduced target: AlphaSmart Pro ROM registration intentionally omitted.
+
 
 // MCU: MC68HC11D0FN
 // NVRAM: NEC D431000ACW-70LL + battery
@@ -1167,5 +1161,4 @@ ROM_END
 
 
 //    YEAR  NAME     PARENT  COMPAT  MACHINE     INPUT       CLASS             INIT        COMPANY                           FULLNAME           FLAGS
-COMP( 1995, asmapro, 0,      0,      alphasmart, alphasmart, alphasmart_state, empty_init, "Intelligent Peripheral Devices", "AlphaSmart Pro" , MACHINE_NOT_WORKING | MACHINE_NO_SOUND )
 COMP( 1997, asma2k,  0,      0,      asma2k,     asma2k,     asma2k_state,     empty_init, "Intelligent Peripheral Devices", "AlphaSmart 2000", MACHINE_NOT_WORKING | MACHINE_NO_SOUND )
