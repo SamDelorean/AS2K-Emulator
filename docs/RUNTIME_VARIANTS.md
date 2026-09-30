@@ -54,6 +54,20 @@ It must:
 
 The normal boot path remains available and is the baseline control.
 
+### Stable post-bootstrap implementation contract
+
+The stable implementation deliberately models the state *after* the physical ATtiny/HC11 stage-0 has completed rather than emulating SCI transfer or temporary HPRIO special-mode timing. The current frozen post-stage-0 contract is:
+
+- PA4/PA5/PA6 cleared, selecting normal lower-half I/O/DictROM view and bank 0;
+- LCD/control latch = `0x04`;
+- SP = `0x00C3`;
+- CCR = `0xD0` (S/X/I set);
+- A = `0x04`, B = `0x00`, IX = IY = `0x0000`;
+- CONFIG = `0x04`;
+- PC = `0x4000`, written only after all other modeled preconditions succeed.
+
+This is intentionally a bounded emulation equivalent of the physical bootstrap. It does not claim to emulate MODA/MODB, SCI download timing, HPRIO transitions or external programmer hardware.
+
 ## `as2k-diag` controls
 
 The private diagnostic variant may expose deterministic Commander operations for:
