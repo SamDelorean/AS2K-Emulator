@@ -2,21 +2,24 @@
 
 Date: 2026-09-30
 
-Status: **PREPARED / COMMANDER BLOCKED UNTIL T160 READY COMMIT**
+Status: **PREPARED / WAITING FOR COMPILED+INSTRUMENTED AS2K-DIAG HANDOFF**
 
 This document defines the minimum diagnostic-emulator capability required to
 resume Profile 1 G2.7 without spending Commander calls on exploratory work.
 
 ## External readiness gate
 
-Do not use Commander for this work until the T160 preparation/cleanup task has
-finished, stopped its scheduled work and published a readiness commit whose
-message contains:
+Do not use Commander from the Profile 1 front until the T160 reimplantation
+worker has completed the emulator work and published the exact handoff commit:
 
-`listo para continuar`
+`trabajos terminados`
 
-That commit is the explicit green light. Before it exists, only repository and
-static preparation are authorized.
+That commit is valid only after the worker has left `as2k-diag` physically
+compiled on the T160, repository-local, launchable and instrumented for the
+current Profile 1 contract, with its required smoke/regression checks completed.
+The handoff is not merely a clean-machine or source-preparation signal.
+
+Before that commit exists, the Profile 1 worker remains static-only.
 
 ## Scope of the first diagnostic build
 
@@ -35,6 +38,22 @@ It must provide the following minimum capabilities:
 6. persistent capture of debugger trace/log output to a known diagnostic path;
 7. no diagnostic-only behavior change to the emulated AS2K unless explicitly
    enabled and labelled as fault injection.
+
+### Closed instrumentation set v1 required at handoff
+
+The T160 reimplantation worker must compile and smoke-test `as2k-diag` with:
+
+- stack watermark/guard with the Profile 1 62-byte stack limit;
+- bank/view restoration guard;
+- configurable PC-region guard;
+- configurable RAM/ROM map and reservation guard;
+- metadata snapshot/checksum;
+- deterministic reset/crash trigger;
+- machine-readable run record, preferably JSONL;
+- manifest/configuration-driven control so later Profile 1 tests do not require
+  recompiling the emulator merely to change watched regions or limits.
+
+Generic tracing/fuzzing is not part of v1 unless a direct blocker requires it.
 
 ## Debugger primitives required by Profile 1 G2.7
 
@@ -76,48 +95,45 @@ Profile 1 link, with a generic debugger probe equivalent to:
 This probe is independent of final Profile 1 symbol placement and exists only
 to establish stack low-water evidence.
 
-## Resume sequence after the readiness commit
+## Resume sequence after the handoff commit
 
-Use Commander only for steps that require the T160 toolchain or emulator
-execution, in this order:
+After `trabajos terminados` is verified remotely, **do not rebuild
+`as2k-diag` as a normal first step**. The emulator build and its v1
+instrumentation are deliverables of the other worker.
 
-1. **Build/smoke `as2k-diag` once.**
-   - build the reduced diagnostic target;
-   - verify the repository-local launcher;
-   - verify diagnostic/stable isolation;
-   - verify the debugger-primitives smoke script.
+Use the already prepared diagnostic emulator in this order:
 
-2. **Run the HC11 relocatable preflight in `SamDelorean/AS2K-V3.14.x`.**
+1. **Run the HC11 relocatable preflight in `SamDelorean/AS2K-V3.14.x`.**
    - execute `sh tools/validate_profile1_debugger_hc11.sh`;
    - record the exact `.p1always_text` size;
    - confirm `.p1iram_bss == 0` and `.p1dbg_bss == 0`;
    - preserve the required-symbol evidence.
 
-3. **Measure stock stack low-water in `as2k-diag`.**
-   - use the generic pre-placement probe above;
+2. **Measure stock stack low-water with the existing `as2k-diag` build.**
+   - use the v1 stack instrumentation / generic pre-placement probe;
    - capture lowest `SP` and corresponding `PC` evidence;
    - do not select an IRAM interval from assumption or synthetic host-test data.
 
-4. **Authorize one executable IRAM interval.**
+3. **Authorize one executable IRAM interval.**
    - combine measured stack headroom with the existing ownership/reference
      evidence;
    - record the exact verified-free interval.
 
-5. **Generate the final candidate linker script and link once.**
+4. **Generate the final candidate linker script and link once.**
    - use `tools/render_profile1_debugger_linker.py`;
    - place AppROM only in CPU `0x4000-0x7FFF`;
    - place `.p1always_text` only inside the verified HC11 internal-RAM interval;
    - produce and preserve the linked `nm` map.
 
-6. **Generate and run the G2.7 debugger script.**
+5. **Generate and run the G2.7 debugger script on the existing diagnostic build.**
    - use `tools/render_profile1_debugger_mame_cmd.py`;
    - exercise stack low-water / optional stack floor;
    - hit the expected Profile 1/Debugger entry points;
    - fail on `P1_RAMWrite8` execution;
    - optionally watch the explicitly selected ERAM probe interval for writes;
-   - capture trace and `logerror` output.
+   - capture trace, `logerror` and machine-readable run evidence.
 
-7. **Close G2.7 only from recorded evidence.**
+6. **Close G2.7 only from recorded evidence.**
    Required dynamic evidence is:
    - exact `.p1always_text` size;
    - measured stack low-water/headroom;
@@ -125,13 +141,18 @@ execution, in this order:
    - successful final link;
    - MAME dynamic run with no prohibited write/stack-floor failures.
 
+Recompile `as2k-diag` only if a concrete failure proves that the delivered
+instrumentation is defective or lacks a requirement already present in this
+contract.
+
 No G2.8 work is authorized by this document.
 
 ## Commander economy rule
 
-The intended first pass is one diagnostic build, one debugger smoke test, one
-stock stack-measurement run, one final Profile 1 link and one focused dynamic
-matrix. Rebuild or rerun only when a recorded failure identifies a concrete
-change to test.
+The diagnostic build and instrumentation smoke belong to the T160
+reimplantation worker. Profile 1 should begin with the HC11 preflight, then use
+that existing build for one stock stack-measurement run, one final Profile 1
+link and one focused dynamic matrix. Rebuild or rerun only when recorded
+evidence identifies a concrete defect or change to test.
 
 Static host work remains outside Commander whenever possible.
