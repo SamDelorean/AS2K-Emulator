@@ -69,6 +69,8 @@ The private diagnostic variant may expose deterministic Commander operations for
 
 These capabilities must remain isolated from stable configuration and must not require modifying proprietary images.
 
+For the first diagnostic build required by Profile 1 G2.7, the minimum instrumentation, readiness gate and Commander-efficient execution order are defined in [PROFILE1_G2_7_DIAG_FIRST_BUILD.md](PROFILE1_G2_7_DIAG_FIRST_BUILD.md). Do not begin that Commander-dependent sequence until the T160 preparation task publishes the `listo para continuar` readiness commit.
+
 ## Shared regression contract
 
 A stable change is acceptable only if both variants agree on:
