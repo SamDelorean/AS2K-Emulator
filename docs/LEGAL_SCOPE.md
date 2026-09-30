@@ -22,16 +22,18 @@ Never commit, attach to a release, or embed:
 - private reverse-engineering exports, traces or diagnostic captures;
 - credentials, tokens or machine-specific paths.
 
-The emulator must request a user-supplied firmware image at runtime. Test automation must use local paths or CI secrets/artifacts that are not committed.
+The stable emulator must request user-supplied ROM and DictROM images through its runtime interface. Normal boot, Direct DictROM bootstrap, image management and save-state features must not modify or redistribute those source images.
 
 ## Trademarks and affiliation
 
 “AlphaSmart” and “MAME” are used descriptively to identify compatibility and technical ancestry. This repository is an independent community project and is not endorsed by the MAME project or by the original device manufacturers.
 
-## Stable/TestLab boundary
+## Stable/`as2k-diag` boundary
 
-Public stable code may contain reproducible emulation, user controls and non-sensitive regression tests. Instrumentation, memory probes, private firmware knowledge, captured documents and Commander-specific harnesses remain in the separate private TestLab repository. A TestLab change may return to this repository only as a clean, reviewed commit containing no private evidence or proprietary data.
+Public stable code may contain reproducible emulation, mouse-accessible user controls, ROM selection, RAM/NVRAM management, save states, integer scaling, PC Send and CUPS/PDF printing.
+
+Instrumentation, memory probes, private firmware knowledge, captured documents, low-level printer traces and Commander-specific harnesses remain in the separate private `as2k-diag` TestLab environment. A diagnostic change may return to this repository only as a clean, reviewed commit containing no private evidence or proprietary data.
 
 ## Release gate
 
-No public binary release is permitted until the dependency manifest, corresponding-source bundle, license texts, build instructions and firmware-exclusion checks have all passed.
+No public binary release is permitted until the dependency manifest, corresponding-source bundle, license texts, build instructions, firmware-exclusion checks and stable-feature regressions have all passed.

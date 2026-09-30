@@ -32,15 +32,29 @@ This repository contains the curated public subset required to understand, build
 | Regenerable | Builds, caches and derived outputs | Delete after reproducibility check |
 | Public | Clean code and documentation | Keep in this repository |
 
-## Migration gate
+## Git preservation rule
 
-No MAME tree, worktree, tool directory or uploaded backup may be removed until:
+All existing Git repositories, Git worktrees and Git-backed project folders are preserved. Migration to the reduced emulator does not authorize deleting, flattening or replacing them.
+
+Space recovery is limited to derived or duplicated runtime material, including:
+
+- compiled executables and object trees;
+- duplicate system installations;
+- build and compiler caches;
+- temporary files and test outputs;
+- copied NVRAM, states and runtime images after their authoritative private location is confirmed;
+- other artifacts proven reproducible from preserved sources and instructions.
+
+## Cleanup gate
+
+No derived artifact or uploaded backup may be removed until:
 
 1. unpushed commits and unique files are inventoried;
-2. useful scripts and documentation are assigned a canonical destination;
-3. stable behaviour and TestLab instrumentation are separated;
+2. useful scripts and documentation have a canonical destination;
+3. stable behaviour and `as2k-diag` instrumentation are separated;
 4. the reduced target builds and passes its regressions;
-5. the private index records the new canonical locations;
-6. regenerable artifacts are distinguishable from irreplaceable evidence.
+5. the private index records the canonical locations;
+6. regeneration instructions have been tested;
+7. before/after disk usage has been recorded.
 
-The goal is one current copy of knowledge, not one copy of every intermediate artifact.
+The goal is one current copy of knowledge and minimal derived storage, not deletion of Git history or engineering sources.
