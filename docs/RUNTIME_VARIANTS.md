@@ -69,7 +69,7 @@ The private diagnostic variant may expose deterministic Commander operations for
 
 These capabilities must remain isolated from stable configuration and must not require modifying proprietary images.
 
-For the first diagnostic build required by Profile 1 G2.7, the minimum instrumentation, readiness gate and Commander-efficient execution order are defined in [PROFILE1_G2_7_DIAG_FIRST_BUILD.md](PROFILE1_G2_7_DIAG_FIRST_BUILD.md). Do not begin that Commander-dependent sequence until the T160 preparation task publishes the `listo para continuar` readiness commit.
+For Profile 1 G2.7, the minimum instrumentation and handoff contract are defined in [PROFILE1_G2_7_DIAG_FIRST_BUILD.md](PROFILE1_G2_7_DIAG_FIRST_BUILD.md). The T160 reimplantation worker must leave `as2k-diag` compiled, repository-local, instrumented and smoke-tested before publishing the exact `trabajos terminados` handoff commit. Profile 1 must not consume Commander before that commit and should not rebuild `as2k-diag` after handoff unless a concrete instrumentation defect is demonstrated.
 
 ## Shared regression contract
 
