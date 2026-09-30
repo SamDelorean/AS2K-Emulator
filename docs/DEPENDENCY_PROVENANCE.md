@@ -4,7 +4,7 @@ This manifest is the gate for importing source into the reduced AS2K distributio
 
 | Component | Upstream path | Expected license | State | Purpose |
 |---|---|---:|---|---|
-| AlphaSmart driver | `src/mame/skeleton/alphasma.cpp` | BSD-3-Clause | Planned | AS2000 machine definition, maps, keyboard, banks and LCD wiring |
+| AlphaSmart driver | `src/mame/skeleton/alphasma.cpp` | BSD-3-Clause | Imported on prep branch; build pending | AS2000 machine definition, maps, keyboard, banks, LCD wiring and validated physical-port PC Send baseline |
 | MC68HC11D0 CPU | `src/devices/cpu/mc68hc11/` | BSD-3-Clause | Planned | CPU and disassembler required by AS2000 |
 | HD44780/KS0066 LCD | `src/devices/video/hd44780.*` | BSD-3-Clause | Planned | Two-controller 40×4 LCD emulation |
 | NVRAM device | `src/devices/machine/nvram.*` | To verify | Planned | Persistent 128 KiB image |
@@ -59,3 +59,16 @@ R0 is complete only when the minimal source closure:
 7. proves separate stable and `as2k-diag` configuration/data locations;
 8. records clean and incremental build metrics plus disk usage;
 9. contains no firmware, DictROM, NVRAM, state, trace or private diagnostic data.
+
+
+## Imported preparation baseline — 2026-09-30
+
+The first traceable AS2K driver donor imported on the preparation branch is:
+
+- repository: `SamDelorean/mame-as3k`
+- commit: `5901a4595f12fc5a0080647fac76c41522495dc1`
+- source path: `src/mame/skeleton/alphasma.cpp`
+- source blob: `fba7023f37f7a89a00d72601ee39234e6ad80231`
+- destination: `src/mame/skeleton/alphasma.cpp`
+
+This import is intentionally the unchanged donor file. It is **not yet the reduced stable driver** and is not merge-ready until AS2K-only reduction, external runtime image loading, boot selection and dependency closure have been implemented and compiled. The immutable donor commit is retained so every later transformation can be reviewed against a known validated source.
