@@ -1210,9 +1210,11 @@ void asma2k_state::asma2k(machine_config &config)
 	// the normal MAME image/file UI and resets the machine.
 	GENERIC_SOCKET(config, m_firmware, generic_plain_slot, "as2k_firmware", "bin,rom,zpsd");
 	m_firmware->set_device_load(FUNC(asma2k_state::firmware_load));
+	m_firmware->set_must_be_loaded(true);
 
 	GENERIC_SOCKET(config, m_dictrom, generic_plain_slot, "as2k_dictrom", "bin,rom");
 	m_dictrom->set_device_load(FUNC(asma2k_state::dictrom_load));
+	m_dictrom->set_must_be_loaded(true);
 }
 
 // AS2K-only reduced target: AlphaSmart Pro ROM registration intentionally omitted.
