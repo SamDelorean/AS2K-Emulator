@@ -73,3 +73,20 @@ Upstream-quality hardware fixes should still be prepared separately in the full 
 The combined project is distributed under **GPL-2.0-or-later**. Imported files retain their original copyright, attribution and SPDX license identifiers. A large part of the expected AS2K dependency closure is BSD-3-Clause licensed, but the aggregate distribution follows the compatible MAME project license.
 
 See [LICENSE](LICENSE), [docs/LEGAL_SCOPE.md](docs/LEGAL_SCOPE.md), [docs/DEPENDENCY_PROVENANCE.md](docs/DEPENDENCY_PROVENANCE.md) and [docs/KNOWLEDGE_LIBRARY.md](docs/KNOWLEDGE_LIBRARY.md).
+
+
+## Cross-project direction update — 2026-10-02
+
+The authoritative Profile 1 product direction is maintained in:
+
+`SamDelorean/AS2K-V3.14.x/docs/PROFILE1_GLOBAL_COMPASS_RUNTIME_OS_20261002.md`
+
+Current relationship:
+
+- Profile 1 G2.9 DebugTool emulator freeze = CLOSED/PASS.
+- Profile 1 is now in G3: Runtime Supervisor + DynFS runtime binding + application dispatcher + Writer v0 + Writer/DebugTool multi-app proof + runtime ABI freeze.
+- The canonical diagnostic/TestLab environment remains infrastructure for validating G3-G6.
+- The reduced/stable emulator may continue its own closure in parallel, but its unfinished packaging/build work must not block or redirect Profile 1 G3 unless a concrete emulator deficiency becomes a direct dependency.
+- This repository defines emulator behavior/infrastructure only; it does not define the Profile 1 application architecture, APPKEY policy, DynFS ownership, or G3-G6 sequencing.
+
+When local emulator documentation conflicts with the current Profile 1 runtime/micro-OS compass on global project direction, the Profile 1 compass controls the product-development sequence.
