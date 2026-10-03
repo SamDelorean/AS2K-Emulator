@@ -4,9 +4,10 @@
 This module intentionally keeps hardware semantics in the emulator core.
 It provides the stable application identity, menus, LCD presentation,
 virtual special keys, capture helpers, and the workbench-only payload selector.
-The core bridge is intentionally narrow: commands are written to a FIFO when
-AS2K_UI_CONTROL_FIFO is set, and the LCD may be mirrored from an 8-bit 240x36
-frame file via AS2K_UI_FRAME_FILE.
+The core bridge is intentionally narrow: commands and events use small
+append-only runtime queue files, and the LCD is mirrored from an 8-bit 240x36
+frame file.  Paths are supplied through AS2K_UI_CONTROL_FILE,
+AS2K_UI_EVENT_FILE and AS2K_UI_FRAME_FILE.
 """
 from __future__ import annotations
 
