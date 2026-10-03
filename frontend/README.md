@@ -34,6 +34,7 @@ Implemented in the shell:
 - IR activity line with the most recent 64 bytes in hexadecimal and a total byte count;
 - wired printer ready-state, physical PD0 serial decoding, completed PCL job delivery and
   GTK Save As to PDF through the CUPS filter chain;
+- Firmware ROM and DictROM file selection staged until the user explicitly chooses Reset;
 - narrow Linux bridge contract for core integration.
 
 ## Bridge contract (R1)
@@ -54,7 +55,7 @@ The current command vocabulary is intentionally human-readable and provisional:
 - `KEYDOWN <matrix-key>` / `KEYUP <matrix-key>` for ordinary physical host-key make/break events;
 - `MACHINE RESET`;
 - `PC ON|OFF`, `PRINTER ON|OFF`, `IR ON|OFF`;
-- `FIRMWARE <path>`, `DICTROM <path>`;
+- `FIRMWARE <path>`, `DICTROM <path>` stage validated images; `MACHINE RESET` applies them;
 - workbench only: `PAYLOAD STOCK|P0|P1|P1B|P2` and `PAYLOAD_FILE <path>`.
 
 The core translates both virtual buttons and ordinary host keyboard make/break events into the
