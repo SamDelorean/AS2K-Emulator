@@ -25,6 +25,12 @@
 #include "emupal.h"
 #include "screen.h"
 
+#include <array>
+#include <cstdlib>
+#include <fstream>
+#include <sstream>
+#include <string_view>
+
 
 namespace {
 
@@ -76,6 +82,8 @@ protected:
 	uint8_t           m_port_a;
 	uint8_t           m_port_d;
 	std::unique_ptr<bitmap_ind16> m_tmp_bitmap;
+	std::array<uint8_t, 16> m_ui_keyboard{};
+	virtual void screen_updated(bitmap_ind16 const &bitmap) { }
 };
 
 enum class as2k_pc_key : uint8_t
@@ -128,6 +136,16 @@ private:
 	void send_sink_begin();
 	void send_sink_codepoint(char32_t codepoint);
 	void send_sink_end();
+	bool pc_connected();
+	void ui_bridge_init();
+	void ui_bridge_poll();
+	void ui_process_command(std::string const &line);
+	void ui_emit_event(std::string const &line);
+	void ui_write_frame(bitmap_ind16 const &bitmap);
+	bool ui_press_key(std::string_view name);
+	virtual void screen_updated(bitmap_ind16 const &bitmap) override;
+	TIMER_CALLBACK_MEMBER(ui_bridge_tick);
+	TIMER_CALLBACK_MEMBER(ui_key_release);
 
 	void asma2k_mem(address_map &map) ATTR_COLD;
 
@@ -157,7 +175,22 @@ private:
 	uint8_t m_pc_alt_numeric_count = 0;
 	char m_pc_alt_numeric_digits[4]{};
 	bool m_send_sink_active = false;
+	bool m_send_sink_had_data = false;
+	uint64_t m_send_session_serial = 0;
 	std::unique_ptr<emu_file> m_send_sink;
+
+	bool m_ui_pc_override = false;
+	bool m_ui_pc_connected = false;
+	bool m_ui_printer_connected = false;
+	bool m_ui_ir_enabled = false;
+	std::string m_ui_control_path;
+	std::string m_ui_event_path;
+	std::string m_ui_frame_path;
+	std::streamoff m_ui_control_offset = 0;
+	emu_timer *m_ui_bridge_timer = nullptr;
+	emu_timer *m_ui_key_release_timer = nullptr;
+	int m_ui_key_col = -1;
+	uint8_t m_ui_key_mask = 0;
 };
 
 INPUT_CHANGED_MEMBER(alphasmart_state::kb_irq)
@@ -173,7 +206,7 @@ uint8_t alphasmart_state::kb_r()
 
 	for(int i=0; i<16; i++)
 		if (!(matrix & (1<<i)))
-			data &= m_keyboard[i]->read();
+			data &= m_keyboard[i]->read() & m_ui_keyboard[i];
 
 	return data;
 }
@@ -259,7 +292,7 @@ void asma2k_state::lcd_ctrl_w(uint8_t data)
 uint8_t asma2k_state::asma2k_port_a_r()
 {
 	uint8_t data = (m_port_a & 0xfd) | (m_battery_status->read() << 1);
-	if (BIT(m_pc_connected->read(), 0))
+	if (pc_connected())
 		data |= 0x05; // PC attached: PA2 asserted, PA0 idle high
 	return data;
 }
@@ -368,12 +401,23 @@ static_assert(std::size(s_pc_us_text) == unsigned(as2k_pc_key::slash) - unsigned
 
 INPUT_CHANGED_MEMBER(asma2k_state::pc_connected_changed)
 {
+	// Once the standalone UI owns the PC-present state, the legacy Pause/Break
+	// toggle remains a fallback input only and must not create a second source
+	// of truth for the hardware-facing host-sense lines.
+	if (m_ui_pc_override)
+		return;
+
 	// PC Connected defines the host session.  Send is intentionally not part
 	// of the sink contract: a real PC only sees keyboard traffic on the wire.
 	m_pc_frame = 0;
 	m_pc_frame_bits = 0;
 	pc_keyboard_reset();
 	send_sink_end();
+}
+
+bool asma2k_state::pc_connected()
+{
+	return m_ui_pc_override ? m_ui_pc_connected : pc_connected();
 }
 
 void asma2k_state::pc_keyboard_reset()
@@ -422,7 +466,7 @@ void asma2k_state::pc_clock_rising(bool data)
 	{
 		if (!m_send_sink_active)
 		{
-			if (!BIT(m_pc_connected->read(), 0))
+			if (!pc_connected())
 				return;
 			send_sink_begin();
 			if (!m_send_sink_active)
@@ -442,7 +486,7 @@ void asma2k_state::pc_clock_rising(bool data)
 void asma2k_state::asma2k_port_d_w(uint8_t data)
 {
 	// The wired PC keyboard interface uses PD0 as clock and inverted PD1 as data.
-	if (BIT(m_pc_connected->read(), 0) && !BIT(m_port_d, 0) && BIT(data, 0))
+	if (pc_connected() && !BIT(m_port_d, 0) && BIT(data, 0))
 		pc_clock_rising(!BIT(data, 1));
 
 	alphasmart_state::port_d_w(data);
@@ -461,18 +505,22 @@ void asma2k_state::send_sink_begin()
 	// at the stable XDG data directory, keeping user output separate from
 	// proprietary input images and from as2k-diag.
 	std::string const output_directory(machine().options().snapshot_directory());
+	std::string const filename = m_ui_event_path.empty()
+			? "send.txt"
+			: ".as2k-send-pending-" + std::to_string(++m_send_session_serial) + ".txt";
 
 	m_send_sink = std::make_unique<emu_file>(
 		output_directory,
 		OPEN_FLAG_WRITE | OPEN_FLAG_CREATE | OPEN_FLAG_CREATE_PATHS);
 
-	std::error_condition const err = m_send_sink->open("send.txt");
+	m_send_sink_had_data = false;
+	std::error_condition const err = m_send_sink->open(filename);
 	if (err)
 	{
 		logerror("AS2K_TX TEXT_SINK_OPEN_FAILED path=%s%s%s error=%s\n",
 			output_directory,
 			PATH_SEPARATOR,
-			"send.txt",
+			filename,
 			err.message());
 		m_send_sink.reset();
 		m_send_sink_active = false;
@@ -721,18 +769,258 @@ void asma2k_state::send_sink_codepoint(char32_t codepoint)
 	{
 		m_send_sink->write(utf8, length);
 		m_send_sink->flush();
+		m_send_sink_had_data = true;
 	}
 }
 
 void asma2k_state::send_sink_end()
 {
+	std::string completed_path;
 	if (m_send_sink)
 	{
+		completed_path = m_send_sink->fullpath();
 		m_send_sink->flush();
 		m_send_sink->close();
 		m_send_sink.reset();
 	}
 	m_send_sink_active = false;
+
+	// In standalone-UI mode, the core never decides the user's destination.
+	// It publishes the completed temporary capture only after the PC session
+	// closes; the GTK front-end then presents Save As and removes the temporary
+	// file.  Legacy non-UI execution preserves the historical send.txt sink.
+	if (!m_ui_event_path.empty() && m_send_sink_had_data && !completed_path.empty())
+		ui_emit_event("SEND_READY\t" + completed_path);
+
+	m_send_sink_had_data = false;
+}
+
+
+void asma2k_state::ui_emit_event(std::string const &line)
+{
+	if (m_ui_event_path.empty())
+		return;
+
+	std::ofstream output(m_ui_event_path, std::ios::out | std::ios::app);
+	if (!output)
+	{
+		logerror("AS2K_UI EVENT_OPEN_FAILED path=%s\\n", m_ui_event_path);
+		return;
+	}
+
+	output << line << '\\n';
+	output.flush();
+}
+
+void asma2k_state::ui_bridge_init()
+{
+	if (char const *path = std::getenv("AS2K_UI_CONTROL_FILE"))
+		m_ui_control_path = path;
+	if (char const *path = std::getenv("AS2K_UI_EVENT_FILE"))
+		m_ui_event_path = path;
+	if (char const *path = std::getenv("AS2K_UI_FRAME_FILE"))
+		m_ui_frame_path = path;
+
+	m_ui_key_release_timer = timer_alloc(FUNC(asma2k_state::ui_key_release), this);
+
+	if (!m_ui_control_path.empty())
+	{
+		m_ui_bridge_timer = timer_alloc(FUNC(asma2k_state::ui_bridge_tick), this);
+		m_ui_bridge_timer->adjust(attotime::from_msec(10), 0, attotime::from_msec(10));
+		ui_emit_event("STATUS\\tAS2K core/UI bridge ready");
+	}
+}
+
+TIMER_CALLBACK_MEMBER(asma2k_state::ui_bridge_tick)
+{
+	ui_bridge_poll();
+}
+
+TIMER_CALLBACK_MEMBER(asma2k_state::ui_key_release)
+{
+	if (m_ui_key_col < 0)
+		return;
+
+	m_ui_keyboard[m_ui_key_col] |= m_ui_key_mask;
+	m_maincpu->set_input_line(MC68HC11_IRQ_LINE, ASSERT_LINE);
+	m_ui_key_col = -1;
+	m_ui_key_mask = 0;
+}
+
+void asma2k_state::ui_bridge_poll()
+{
+	if (m_ui_control_path.empty())
+		return;
+
+	std::ifstream input(m_ui_control_path, std::ios::in | std::ios::binary);
+	if (!input)
+		return;
+
+	input.seekg(0, std::ios::end);
+	std::streamoff const size = input.tellg();
+	if (size < 0)
+		return;
+	if (size < m_ui_control_offset)
+		m_ui_control_offset = 0;
+	if (size == m_ui_control_offset)
+		return;
+
+	input.seekg(m_ui_control_offset, std::ios::beg);
+	std::string chunk(
+		(std::istreambuf_iterator<char>(input)),
+		std::istreambuf_iterator<char>());
+	m_ui_control_offset = size;
+
+	std::istringstream lines(chunk);
+	std::string line;
+	while (std::getline(lines, line))
+	{
+		if (!line.empty() && line.back() == '\\r')
+			line.pop_back();
+		if (!line.empty())
+			ui_process_command(line);
+	}
+}
+
+bool asma2k_state::ui_press_key(std::string_view name)
+{
+	struct key_map
+	{
+		std::string_view name;
+		uint8_t col;
+		uint8_t mask;
+	};
+
+	// These are the AlphaSmart 2000 matrix locations already used by the
+	// physical keyboard ports below.  The UI overlay therefore enters exactly
+	// the same kb_r/IRQ path; it never calls a firmware routine directly.
+	static constexpr key_map keys[] =
+	{
+		{ "ESC",   4,  0x80 },
+		{ "F1",   11,  0x10 },
+		{ "F2",   10,  0x10 },
+		{ "F3",   10,  0x01 },
+		{ "F4",   10,  0x02 },
+		{ "F5",    9,  0x02 },
+		{ "F6",    0,  0x02 },
+		{ "F7",    2,  0x01 },
+		{ "F8",    2,  0x10 },
+		{ "PRINT", 9,  0x10 },
+		{ "SPELL", 9,  0x20 },
+		{ "FIND",  7,  0x40 },
+		{ "CLEAR", 4,  0x20 },
+		{ "HOME",  4,  0x08 },
+		{ "END",   5,  0x40 },
+		{ "ENTER", 6,  0x10 },
+		{ "SEND",  7,  0x10 },
+	};
+
+	for (auto const &entry : keys)
+	{
+		if (entry.name != name)
+			continue;
+
+		if (m_ui_key_col >= 0)
+			m_ui_keyboard[m_ui_key_col] |= m_ui_key_mask;
+
+		m_ui_key_col = entry.col;
+		m_ui_key_mask = entry.mask;
+		m_ui_keyboard[entry.col] &= ~entry.mask;
+		m_maincpu->set_input_line(MC68HC11_IRQ_LINE, ASSERT_LINE);
+		m_ui_key_release_timer->adjust(attotime::from_msec(45));
+		return true;
+	}
+
+	return false;
+}
+
+void asma2k_state::ui_process_command(std::string const &line)
+{
+	if (line.rfind("KEY ", 0) == 0)
+	{
+		std::string_view const key(line.data() + 4, line.size() - 4);
+		if (!ui_press_key(key))
+			ui_emit_event("STATUS\\tUnsupported virtual key: " + std::string(key));
+		return;
+	}
+
+	if (line == "PC ON" || line == "PC OFF")
+	{
+		bool const connected = line == "PC ON";
+		bool const changed = !m_ui_pc_override || (connected != m_ui_pc_connected);
+		m_ui_pc_override = true;
+		m_ui_pc_connected = connected;
+		if (changed)
+		{
+			m_pc_frame = 0;
+			m_pc_frame_bits = 0;
+			pc_keyboard_reset();
+			send_sink_end();
+		}
+		ui_emit_event(std::string("STATUS\\tPC ") + (connected ? "connected" : "disconnected"));
+		return;
+	}
+
+	if (line == "PRINTER ON" || line == "PRINTER OFF")
+	{
+		m_ui_printer_connected = line == "PRINTER ON";
+		ui_emit_event(std::string("STATUS\\tPrinter ") + (m_ui_printer_connected ? "enabled" : "disabled") +
+			" (transport integration pending)");
+		return;
+	}
+
+	if (line == "IR ON" || line == "IR OFF")
+	{
+		m_ui_ir_enabled = line == "IR ON";
+		ui_emit_event(std::string("STATUS\\tIR ") + (m_ui_ir_enabled ? "enabled" : "disabled") +
+			" (byte source integration pending)");
+		return;
+	}
+
+	if (line == "MACHINE RESET")
+	{
+		machine().schedule_soft_reset();
+		ui_emit_event("STATUS\\tSoft reset requested");
+		return;
+	}
+
+	if (line == "KEY POWER" || line == "MACHINE POWER")
+	{
+		ui_emit_event("STATUS\\tPower-key emulation pending hardware contract");
+		return;
+	}
+
+	if (line.rfind("FIRMWARE ", 0) == 0 || line.rfind("DICTROM ", 0) == 0 ||
+		line.rfind("PAYLOAD ", 0) == 0 || line.rfind("PAYLOAD_FILE ", 0) == 0)
+	{
+		ui_emit_event("STATUS\\tImage/payload selection recorded by UI; restart/load bridge pending");
+		return;
+	}
+
+	ui_emit_event("STATUS\\tUnknown UI command: " + line);
+}
+
+void asma2k_state::ui_write_frame(bitmap_ind16 const &bitmap)
+{
+	if (m_ui_frame_path.empty())
+		return;
+
+	constexpr unsigned width = 6 * 40;
+	constexpr unsigned height = 9 * 4;
+	std::array<uint8_t, width * height> frame{};
+
+	for (unsigned y = 0; y < height; ++y)
+		for (unsigned x = 0; x < width; ++x)
+			frame[y * width + x] = bitmap.pix(y, x) ? 1 : 0;
+
+	std::ofstream output(m_ui_frame_path, std::ios::out | std::ios::binary | std::ios::trunc);
+	if (output)
+		output.write(reinterpret_cast<char const *>(frame.data()), frame.size());
+}
+
+void asma2k_state::screen_updated(bitmap_ind16 const &bitmap)
+{
+	ui_write_frame(bitmap);
 }
 
 void asma2k_state::port_a_w(uint8_t data)
@@ -1191,6 +1479,7 @@ uint32_t alphasmart_state::screen_update(screen_device &screen, bitmap_ind16 &bi
 	copybitmap(bitmap, *m_tmp_bitmap, 0, 0, 0, 0, cliprect);
 	m_lcdc[1]->screen_update(screen, *m_tmp_bitmap, cliprect);
 	copybitmap(bitmap, *m_tmp_bitmap, 0, 0, 0, 18,cliprect);
+	screen_updated(bitmap);
 	return 0;
 }
 
@@ -1207,6 +1496,7 @@ void asma2k_state::machine_start()
 
 	save_item(NAME(m_lcd_ctrl));
 	save_item(NAME(m_dict_bank));
+	ui_bridge_init();
 }
 
 void asma2k_state::machine_reset()
@@ -1225,6 +1515,7 @@ void alphasmart_state::machine_reset()
 {
 	m_rambank->set_entry(0);
 	m_matrix[0] = m_matrix[1] = 0;
+	m_ui_keyboard.fill(0xff);
 	m_port_a = 0;
 	m_port_d = 0;
 }
