@@ -21,9 +21,25 @@ paths may also be supplied through `AS2K_FIRMWARE` and `AS2K_DICTROM`.
 
 ## Run
 
+Normal user-supervised installation:
+
 ```sh
 sh install-as2k.sh
 ```
+
+The script asks once before downloading/installing packages. After confirmation, package
+installation proceeds without repeated yes/no questions. `apt-get` uses `-y` and a
+noninteractive frontend; Alpine `apk add` normally installs without confirmation.
+
+For an unattended run, use:
+
+```sh
+AS2K_ASSUME_YES=1 sh install-as2k.sh
+```
+
+In unattended mode the script does not wait for package-manager or Git prompts and requires
+passwordless/noninteractive `sudo`. Firmware and DictROM paths must already be supplied
+through `AS2K_FIRMWARE` / `AS2K_DICTROM` or the expected files must be beside the SH.
 
 The script performs the following work in sequence:
 
