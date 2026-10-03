@@ -62,9 +62,13 @@ class AS2KWindow(Gtk.ApplicationWindow):
 
         runtime = xdg_runtime_dir()
         runtime.mkdir(parents=True, exist_ok=True)
-        self.control_fifo = Path(os.environ.get("AS2K_UI_CONTROL_FIFO", runtime / "control.fifo"))
+        self.control_file = Path(os.environ.get("AS2K_UI_CONTROL_FILE", runtime / "control.queue"))
+        self.event_file = Path(os.environ.get("AS2K_UI_EVENT_FILE", runtime / "events.queue"))
         self.frame_file = Path(os.environ.get("AS2K_UI_FRAME_FILE", runtime / "lcd.bin"))
         self.frame_mtime_ns = -1
+        self.event_offset = 0
+        self.control_file.write_text("", encoding="utf-8")
+        self.event_file.write_text("", encoding="utf-8")
 
         self.video_process: Optional[subprocess.Popen] = None
         self.video_tmp: Optional[Path] = None
@@ -79,6 +83,7 @@ class AS2KWindow(Gtk.ApplicationWindow):
         self._update_header()
         self._update_ir_line("IR: OFF")
         GLib.timeout_add(20, self._poll_frame_file)
+        GLib.timeout_add(50, self._poll_events)
 
     def _build_ui(self) -> None:
         root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
@@ -195,6 +200,8 @@ class AS2KWindow(Gtk.ApplicationWindow):
         help_root = Gtk.MenuItem(label="Ayuda")
         help_root.set_submenu(help_menu)
         bar.append(help_root)
+        self._menu_item(help_menu, "Atajos de teclado…", self._show_shortcuts)
+        help_menu.append(Gtk.SeparatorMenuItem())
         self._menu_item(help_menu, "Acerca de AS2K Emulator", self._show_about)
 
         return bar
@@ -300,16 +307,62 @@ class AS2KWindow(Gtk.ApplicationWindow):
 
     def _send_control(self, command: str) -> bool:
         try:
-            fd = os.open(self.control_fifo, os.O_WRONLY | os.O_NONBLOCK)
-        except OSError:
-            self.status.set_text(f"Backend not connected — queued action not sent: {command}")
-            return False
-        try:
-            os.write(fd, (command + "\n").encode("utf-8"))
+            with self.control_file.open("a", encoding="utf-8") as stream:
+                stream.write(command + "\n")
             self.status.set_text(command)
             return True
-        finally:
-            os.close(fd)
+        except OSError as exc:
+            self.status.set_text(f"No se pudo enviar al backend: {exc}")
+            return False
+
+    def _poll_events(self) -> bool:
+        try:
+            size = self.event_file.stat().st_size
+            if size < self.event_offset:
+                self.event_offset = 0
+            if size == self.event_offset:
+                return True
+            with self.event_file.open("r", encoding="utf-8", errors="replace") as stream:
+                stream.seek(self.event_offset)
+                chunk = stream.read()
+                self.event_offset = stream.tell()
+        except OSError:
+            return True
+
+        for line in chunk.splitlines():
+            self._handle_event(line)
+        return True
+
+    def _handle_event(self, line: str) -> None:
+        if not line:
+            return
+        parts = line.split("\t")
+        kind = parts[0]
+        if kind == "STATUS" and len(parts) >= 2:
+            self.status.set_text(parts[1])
+            return
+        if kind == "SEND_READY" and len(parts) >= 2:
+            path = Path(parts[1])
+            try:
+                data = path.read_bytes()
+                path.unlink(missing_ok=True)
+            except OSError as exc:
+                self._error("No se pudo leer la captura Send", str(exc))
+                return
+            if data:
+                self.send_capture[:] = data
+                self._save_send_capture()
+            return
+        if kind == "IR_BYTES" and len(parts) >= 3:
+            try:
+                data = bytes.fromhex(parts[2])
+            except ValueError:
+                return
+            self.receive_ir_bytes(data, parts[1])
+            return
+        if kind == "IR_DONE":
+            self.finish_ir_transfer()
+            return
 
     def _poll_frame_file(self) -> bool:
         try:
@@ -386,8 +439,8 @@ class AS2KWindow(Gtk.ApplicationWindow):
         self.pc_connected = item.get_active()
         self._send_control(f"PC {'ON' if self.pc_connected else 'OFF'}")
         self._update_header()
-        if was_connected and not self.pc_connected and self.send_capture:
-            self._save_send_capture()
+        # A completed capture is published asynchronously by the core as
+        # SEND_READY after the physical-port decoder closes the PC session.
 
     def _toggle_printer(self, item: Gtk.CheckMenuItem) -> None:
         self.printer_connected = item.get_active()
@@ -603,7 +656,8 @@ class AS2KWindow(Gtk.ApplicationWindow):
 
     def _show_paths(self, *_args) -> None:
         message = (
-            f"Control FIFO:\n{self.control_fifo}\n\n"
+            f"Control queue:\n{self.control_file}\n\n"
+            f"Event queue:\n{self.event_file}\n\n"
             f"LCD frame:\n{self.frame_file}\n\n"
             "Framebuffer esperado: 240×36 bytes, un byte por píxel (0/1)."
         )
@@ -614,6 +668,37 @@ class AS2KWindow(Gtk.ApplicationWindow):
         dialog.format_secondary_text(message)
         dialog.run()
         dialog.destroy()
+
+    def _show_shortcuts(self, *_args) -> None:
+        shortcuts_path = Path(__file__).with_name("alphasmart_2000_shortcuts.txt")
+        try:
+            text = shortcuts_path.read_text(encoding="utf-8")
+        except OSError as exc:
+            self._error("No se pudo abrir la ayuda de atajos", str(exc))
+            return
+
+        window = Gtk.Window(title="AS2K Emulator — Atajos de teclado")
+        window.set_transient_for(self)
+        window.set_default_size(720, 560)
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        box.set_border_width(10)
+        window.add(box)
+
+        scroller = Gtk.ScrolledWindow()
+        scroller.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
+        view = Gtk.TextView()
+        view.set_editable(False)
+        view.set_cursor_visible(False)
+        view.set_wrap_mode(Gtk.WrapMode.WORD_CHAR)
+        view.set_monospace(True)
+        view.get_buffer().set_text(text)
+        scroller.add(view)
+        box.pack_start(scroller, True, True, 0)
+
+        close = Gtk.Button(label="Cerrar")
+        close.connect("clicked", lambda *_: window.destroy())
+        box.pack_start(close, False, False, 0)
+        window.show_all()
 
     def _show_about(self, *_args) -> None:
         dialog = Gtk.AboutDialog(transient_for=self, modal=True)
