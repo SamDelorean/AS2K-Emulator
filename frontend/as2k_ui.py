@@ -534,12 +534,14 @@ class AS2KWindow(Gtk.ApplicationWindow):
         if path:
             self.firmware_path = path
             self._send_control(f"FIRMWARE {path}")
+            self.status.set_text("ROM seleccionada; use Máquina → Reiniciar AlphaSmart")
 
     def _choose_dictrom(self, *_args) -> None:
         path = self._choose_file("Seleccionar DictROM")
         if path:
             self.dictrom_path = path
             self._send_control(f"DICTROM {path}")
+            self.status.set_text("DictROM seleccionada; use Máquina → Reiniciar AlphaSmart")
 
     def _payload_selected(self, item: Gtk.RadioMenuItem, name: str) -> None:
         if not item.get_active():
