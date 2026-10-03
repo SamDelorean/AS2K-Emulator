@@ -83,6 +83,15 @@ AS2K_JOBS=1 sh install-as2k.sh
 
 A higher job count can be selected explicitly if desired.
 
+## Validation policy
+
+The installer performs only automated static/build checks. The installed stable emulator is not
+instrumented, so functional testing is intentionally manual.
+
+After installation, the user verifies normal typing, LCD behavior, special keys, manual
+ROM/DictROM selection followed by Reset, and the visible save/capture flows directly in the GUI.
+No background supervisor or Commander polling is required.
+
 ## Failure policy
 
 The script uses `set -eu` and stops on the first failed installation/build/validation step.
