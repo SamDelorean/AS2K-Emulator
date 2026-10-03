@@ -43,6 +43,14 @@ def main() -> int:
     )
     h = replace_once(
         h,
+        """	auto out_spi2_data_callback() { return m_spi2_data_output_cb.bind(); }""",
+        """	auto out_spi2_data_callback() { return m_spi2_data_output_cb.bind(); }
+	auto as2k_ir_tx_callback() { return m_as2k_ir_tx_cb.bind(); }
+	auto as2k_ir_event_callback() { return m_as2k_ir_event_cb.bind(); }""",
+        "AS2K IR callbacks",
+    )
+    h = replace_once(
+        h,
         """	uint8_t pactl_r();
 	void pactl_w(uint8_t data);
 	uint8_t pactl_ddra_r();""",
@@ -68,6 +76,16 @@ def main() -> int:
     )
     h = replace_once(
         h,
+        """	devcb_read8 m_spi2_data_input_cb;
+	devcb_write8 m_spi2_data_output_cb;""",
+        """	devcb_read8 m_spi2_data_input_cb;
+	devcb_write8 m_spi2_data_output_cb;
+	devcb_write8 m_as2k_ir_tx_cb;
+	devcb_write8 m_as2k_ir_event_cb;""",
+        "AS2K IR callback members",
+    )
+    h = replace_once(
+        h,
         """	uint8_t m_tflg2;
 	uint8_t m_tmsk2;
 	uint8_t m_pactl;
@@ -80,6 +98,16 @@ def main() -> int:
         "PACNT state",
     )
 
+    c = replace_once(
+        c,
+        """	, m_spi2_data_input_cb(*this, 0xff)
+	, m_spi2_data_output_cb(*this)""",
+        """	, m_spi2_data_input_cb(*this, 0xff)
+	, m_spi2_data_output_cb(*this)
+	, m_as2k_ir_tx_cb(*this)
+	, m_as2k_ir_event_cb(*this)""",
+        "AS2K IR callback constructor",
+    )
     c = replace_once(
         c,
         """	, m_program_config("program", ENDIANNESS_BIG, 8, 16, 0, address_map_constructor(FUNC(mc68hc11_cpu_device::internal_map), this))
@@ -227,6 +255,53 @@ uint8_t mc68hc11a1_device::pactl_ddra7_r()""",
 	default:""",
         "PAI input",
     )
+
+    observer = """			m_ppc = m_pc;
+			debugger_instruction_hook(m_pc);"""
+    observer_with_instruction_cb = """			m_ppc = m_pc;
+			m_instruction_cb(m_pc);
+			debugger_instruction_hook(m_pc);"""
+    observed = """			m_ppc = m_pc;
+			uint16_t const pc = m_ppc;
+			if (pc == 0xd1ef)
+				m_as2k_ir_tx_cb(m_d.d8.b);
+			else if (pc == 0xd220)
+				m_as2k_ir_event_cb(0x01);
+			else if (pc == 0xd0d7)
+				m_as2k_ir_event_cb(0x30);
+			else if (pc == 0xd2dc)
+				m_as2k_ir_event_cb(0x10);
+			else if (pc == 0x9719)
+				m_as2k_ir_event_cb(0x11);
+			else if (pc == 0xd437)
+				m_as2k_ir_event_cb(0x20);
+			else if (pc == 0xd47d)
+				m_as2k_ir_event_cb(0x21);
+			debugger_instruction_hook(m_pc);"""
+    observed_with_instruction_cb = """			m_ppc = m_pc;
+			m_instruction_cb(m_pc);
+			uint16_t const pc = m_ppc;
+			if (pc == 0xd1ef)
+				m_as2k_ir_tx_cb(m_d.d8.b);
+			else if (pc == 0xd220)
+				m_as2k_ir_event_cb(0x01);
+			else if (pc == 0xd0d7)
+				m_as2k_ir_event_cb(0x30);
+			else if (pc == 0xd2dc)
+				m_as2k_ir_event_cb(0x10);
+			else if (pc == 0x9719)
+				m_as2k_ir_event_cb(0x11);
+			else if (pc == 0xd437)
+				m_as2k_ir_event_cb(0x20);
+			else if (pc == 0xd47d)
+				m_as2k_ir_event_cb(0x21);
+			debugger_instruction_hook(m_pc);"""
+    if observer in c:
+        c = c.replace(observer, observed, 1)
+    elif observer_with_instruction_cb in c:
+        c = c.replace(observer_with_instruction_cb, observed_with_instruction_cb, 1)
+    else:
+        raise SystemExit("HC11 PAI patch source mismatch: AS2K IR observer")
 
     header.write_text(h, encoding="utf-8")
     source.write_text(c, encoding="utf-8")
