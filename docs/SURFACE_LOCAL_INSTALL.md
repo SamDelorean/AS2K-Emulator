@@ -1,5 +1,23 @@
 # Surface RT / postmarketOS local installation
 
+## Unattended Surface installer
+
+For the current Surface RT/postmarketOS target use the frozen installer:
+
+```sh
+sh install-as2k-surface.sh
+```
+
+It is fully non-interactive: it installs all Alpine/postmarketOS build and runtime dependencies,
+checks out the exact AS2K/MAME revisions already validated on the T640, compiles locally with one
+job by default, installs the application and desktop launcher, configures the private ROM images,
+and finishes with static/build validation. No Commander polling or runtime instrumentation is
+part of this flow.
+
+Before starting, place `AS2000_v3.1.4.bin` and `dictrom.bin` beside the SH, or define
+`AS2K_FIRMWARE` and `AS2K_DICTROM`. Missing images cause an immediate fail before package
+installation begins.
+
 This is the user-facing installation path for AS2K Emulator.
 
 The installation remains intentionally simple: download one shell script, keep the private
