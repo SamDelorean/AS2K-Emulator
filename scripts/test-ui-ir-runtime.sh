@@ -18,6 +18,11 @@ SEED_NVRAM=$4
 [ -f "$DICTROM" ] || { echo "DICTROM not found" >&2; exit 2; }
 [ -d "$SEED_NVRAM" ] || { echo "SEED_NVRAM_DIR not found" >&2; exit 2; }
 
+CORE_BIN=$(CDPATH= cd -- "$(dirname -- "$CORE_BIN")" && pwd)/$(basename -- "$CORE_BIN")
+ROM1=$(CDPATH= cd -- "$(dirname -- "$ROM1")" && pwd)/$(basename -- "$ROM1")
+DICTROM=$(CDPATH= cd -- "$(dirname -- "$DICTROM")" && pwd)/$(basename -- "$DICTROM")
+SEED_NVRAM=$(CDPATH= cd -- "$SEED_NVRAM" && pwd)
+
 WORK=$(mktemp -d)
 cleanup() { rm -rf "$WORK"; }
 trap cleanup EXIT HUP INT TERM
