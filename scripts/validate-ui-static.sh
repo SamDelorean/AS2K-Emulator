@@ -1,0 +1,14 @@
+#!/bin/sh
+set -eu
+
+REPO_DIR=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+UI="$REPO_DIR/frontend/as2k_ui.py"
+
+python3 -m py_compile "$UI"
+
+grep -q '^LCD_WIDTH = 240$' "$UI"
+grep -q '^LCD_HEIGHT = 36$' "$UI"
+grep -q '^VIDEO_FPS = 25$' "$UI"
+grep -q '^IR_VISIBLE_BYTES = 64$' "$UI"
+
+printf '%s\n' "AS2K UI static validation: PASS"
