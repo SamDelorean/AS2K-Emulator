@@ -26,8 +26,12 @@ confirm()
 
 run_sudo()
 {
+    if [ "$(id -u)" -eq 0 ]; then
+        "$@"
+        return
+    fi
     if [ "$ASSUME_YES" = "1" ]; then
-        sudo -n "$@" || die "sudo no está autorizado sin interacción"
+        sudo -n "$@" || die "sudo/root no está autorizado sin interacción"
     else
         sudo "$@"
     fi
