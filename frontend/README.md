@@ -13,9 +13,10 @@ The front-end uses GTK 3 / PyGObject and keeps rendering work small: the logical
 
 ## Current status
 
-The UI shell is implemented and can be syntax-validated independently from the reduced core.
-The core/UI bridge is not yet implemented in `alphasma.cpp`, so this is **not** the installable
-stable release yet.
+The standalone UI and core/UI bridge are implemented. Core/runtime gates are closed for the
+LCD mirror, virtual matrix keys, PC/Send, wired Print→CUPS-PDF, and Send/Print IrDA
+visualization. A live GTK acceptance pass and Surface RT packaging/install remain before the
+stable release is promoted.
 
 Implemented in the shell:
 
@@ -58,10 +59,10 @@ The current command vocabulary is intentionally human-readable and provisional:
 The core must translate virtual key commands into the same keyboard-matrix transitions as the
 physical AlphaSmart keys. The front-end must not call firmware routines directly.
 
-The core side now implements LCD mirroring, virtual special-key injection through the
-existing keyboard matrix, PC-present override through the validated host-sense path, and
-completed Send-capture publication.  Printer transport and the real IR-byte source remain
-separate pending increments; the event vocabulary already reserves IR_BYTES/IR_DONE.
+The core side implements LCD mirroring, virtual special-key injection through the existing
+keyboard matrix, PC-present/Send capture, wired printer/PCL completion, and the recovered
+validated IrDA peer. Real IrDA TX bytes are published as IR_BYTES and normal stock firmware
+session return publishes IR_DONE. Stable IR never persists TXT, PDF, PCL or RAW captures.
 
 ## Keyboard shortcuts help
 
