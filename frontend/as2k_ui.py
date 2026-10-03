@@ -48,6 +48,8 @@ class AS2KWindow(Gtk.ApplicationWindow):
         self.set_title("AS2K Emulator")
         self.set_border_width(0)
         self.connect("delete-event", self._on_delete_event)
+        self.connect("key-press-event", self._on_host_key_press)
+        self.connect("key-release-event", self._on_host_key_release)
 
         self.pc_connected = False
         self.printer_connected = False
@@ -87,6 +89,55 @@ class AS2KWindow(Gtk.ApplicationWindow):
         self._update_ir_line("IR: OFF")
         GLib.timeout_add(20, self._poll_frame_file)
         GLib.timeout_add(50, self._poll_events)
+
+    @staticmethod
+    def _host_key_name(event) -> Optional[str]:
+        name = Gdk.keyval_name(event.keyval) or ""
+        aliases = {
+            "Escape": "ESC", "BackSpace": "BACKSPACE", "Tab": "TAB",
+            "Return": "RETURN", "KP_Enter": "ENTER", "space": "SPACE",
+            "Home": "HOME", "End": "END", "Left": "LEFT", "Right": "RIGHT",
+            "Up": "UP", "Down": "DOWN", "Caps_Lock": "CAPSLOCK",
+            "Shift_L": "LSHIFT", "Shift_R": "RSHIFT", "Control_L": "LCTRL",
+            "Alt_L": "LALT", "Alt_R": "RALT", "ISO_Level3_Shift": "RALT",
+            "Super_L": "COMMAND", "Meta_L": "COMMAND", "Page_Up": "COMMAND",
+            "F9": "PRINT", "F10": "SPELL", "F11": "FIND", "F12": "SEND",
+            "grave": "GRAVE", "asciitilde": "GRAVE",
+            "minus": "MINUS", "underscore": "MINUS",
+            "equal": "EQUALS", "plus": "EQUALS",
+            "bracketleft": "LBRACKET", "braceleft": "LBRACKET",
+            "bracketright": "RBRACKET", "braceright": "RBRACKET",
+            "backslash": "BACKSLASH", "bar": "BACKSLASH",
+            "semicolon": "SEMICOLON", "colon": "SEMICOLON",
+            "apostrophe": "QUOTE", "quotedbl": "QUOTE",
+            "comma": "COMMA", "less": "COMMA",
+            "period": "PERIOD", "greater": "PERIOD",
+            "slash": "SLASH", "question": "SLASH",
+            "parenright": "0", "exclam": "1", "at": "2", "numbersign": "3",
+            "dollar": "4", "percent": "5", "asciicircum": "6",
+            "ampersand": "7", "asterisk": "8", "parenleft": "9",
+        }
+        if name in aliases:
+            return aliases[name]
+        if name.startswith("F") and name[1:].isdigit() and 1 <= int(name[1:]) <= 8:
+            return name
+        if len(name) == 1:
+            ch = name.upper()
+            if "A" <= ch <= "Z" or "0" <= ch <= "9":
+                return ch
+        return None
+
+    def _on_host_key_press(self, _widget, event) -> bool:
+        key = self._host_key_name(event)
+        if key:
+            self._send_control(f"KEYDOWN {key}")
+        return False
+
+    def _on_host_key_release(self, _widget, event) -> bool:
+        key = self._host_key_name(event)
+        if key:
+            self._send_control(f"KEYUP {key}")
+        return False
 
     def _build_ui(self) -> None:
         root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
