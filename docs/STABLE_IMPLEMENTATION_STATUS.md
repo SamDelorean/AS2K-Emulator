@@ -7,16 +7,16 @@ This table distinguishes source prepared statically from behavior proven by nati
 
 | Component | Source status | Native/runtime status |
 |---|---|---|
-| AS2K-only registration | PREPARED | PENDING reduced binary |
+| AS2K-only registration | IMPLEMENTED | REDUCED BUILD PASS |
 | External Firmware socket | PREPARED | PENDING UI load bridge |
 | External DictROM socket | PREPARED | PENDING UI load bridge |
-| No fixed proprietary ROM-set dependency | STATIC PASS | PENDING full runtime |
+| No fixed proprietary ROM-set dependency | STATIC PASS | REDUCED BUILD/VALIDATE PASS |
 | Normal firmware boot | PRESERVED BY DESIGN | PENDING full runtime |
 | Direct DictROM bootstrap | PREPARED | PENDING full runtime |
 | LCD 40x4 core | DONOR/SHARED | DRIVER COMPILE PASS |
 | Standalone AS2K GTK UI shell | IMPLEMENTED | Python static gate PASS; live Surface test PENDING |
-| LCD mirror core→UI | IMPLEMENTED | DRIVER COMPILE PASS; runtime acceptance PENDING |
-| Mouse special keys→matrix | IMPLEMENTED | DRIVER COMPILE PASS; runtime acceptance PENDING |
+| LCD mirror core→UI | IMPLEMENTED | RUNTIME PASS (8640-byte framebuffer) |
+| Mouse special keys→matrix | IMPLEMENTED | RUNTIME PASS (Find + Send) |
 | 100/150/200/fullscreen UI | IMPLEMENTED | live GUI test PENDING |
 | PNG LCD screenshot | IMPLEMENTED | live GUI test PENDING |
 | MP4/H.264 LCD recording, no audio | IMPLEMENTED | FFmpeg/live GUI test PENDING |
@@ -24,17 +24,17 @@ This table distinguishes source prepared statically from behavior proven by nati
 | Workbench payload selector | UI IMPLEMENTED | core payload/load bridge PENDING |
 | Keyboard/F1-F8/sleep-wake | DONOR/SHARED | DRIVER COMPILE PASS |
 | 128 KiB NVRAM/banking | DONOR + external DictROM refactor | DRIVER COMPILE PASS |
-| PC host-present state from UI | IMPLEMENTED through existing PA host-sense path | DRIVER COMPILE PASS; runtime acceptance PENDING |
-| PC Send physical-port decoding | VALIDATED DONOR + UI session integration | DRIVER COMPILE PASS; runtime acceptance PENDING |
-| Send Save-As-on-disconnect | IMPLEMENTED core event + GTK Save As | runtime acceptance PENDING |
+| PC host-present state from UI | IMPLEMENTED through existing PA host-sense path | RUNTIME PASS |
+| PC Send physical-port decoding | VALIDATED DONOR + UI session integration | RUNTIME PASS |
+| Send Save-As-on-disconnect | IMPLEMENTED core event + GTK Save As | CORE EVENT PASS; live GTK dialog PENDING |
 | IR hexadecimal display UI | IMPLEMENTED | actual IR byte source PENDING |
-| Printer connected UI | IMPLEMENTED state only | transport/CUPS backend PENDING |
-| CUPS/PDF printing | NOT YET INTEGRATED | PENDING |
+| Printer connected UI | IMPLEMENTED | PA0 ready-state + wired transport RUNTIME PASS |
+| CUPS/PDF printing | IMPLEMENTED for verified HP/PCL-text subset | RUNTIME PASS; live GTK Save As PENDING |
 | Power virtual key | UI PRESENT | hardware contract intentionally PENDING |
 | Save-state path isolation | LAUNCHER PREPARED | PENDING runtime |
 | Linux command/menu installation | PREPARED | packaging smoke PASS; Surface package integration PENDING |
-| Reduced dependency closure | IN PROGRESS | full link currently blocked by Qt debugger linkage in donor MAME tree |
-| `-validate` | — | PENDING linked reduced binary |
+| Reduced dependency closure | CLOSED | REDUCED BUILD PASS |
+| `-validate` | — | PASS |
 | Surface RT installed stable | — | PENDING |
 
 ## Validation performed on T640
@@ -108,25 +108,60 @@ The GTK Save-As dialog itself still requires a live graphical-session acceptance
 firmware transmission, physical-port decoder, session boundary, completed-capture event and
 exact captured content are now dynamically proven through the new bridge.
 
+## Wired Print → CUPS PDF — PASS
+
+The wired printing gate is closed for the verified stock-v3.1.4 HP/PCL-text subset.
+
+The implementation reuses the previously validated physical signal model: with
+`Impresora conectada`, PA0 reports printer-ready and PD0 edges are decoded using the same
+2 MHz timing and inverted 8N1 sampling points already established by the diagnostic work.
+Print remains a normal AlphaSmart keyboard-matrix event; no firmware routine or program
+counter hook was added.
+
+The stable core now opens a temporary PCL capture on the first valid printer byte and closes
+the job only when the observed complete HP/PCL terminator
+`ESC &l0H ESC E` is received. A completed job emits exactly one
+`PRINT_READY <path>` event to the GTK front-end. The front-end then opens the normal
+Save-As flow and converts the verified text subset to PDF through `cupsfilter` with a
+generic PDF PPD. Unsupported PCL fails closed and preserves the raw PCL for diagnosis.
+
+T640 deterministic runtime result from a real stock-v3.1.4 Print operation:
+
+```text
+STATUS    Printer connected
+PRINT_READY    .../.as2k-print-pending-1.pcl
+AS2K wired PCL capture: PASS bytes=77
+AS2K_CUPS_PDF_PASS pages=1 bytes=41318
+AS2K wired CUPS PDF: PASS bytes=41318
+AS2K UI Print runtime: PASS
+```
+
+The captured physical stream had the expected PCL prologue/terminator and contained
+`AS2K PRINT TEST`. The resulting file was recognized as a one-page PDF. The reproducible
+regression is `scripts/test-ui-print-runtime.sh`.
+
+The wired printer and PC keyboard are now treated as mutually exclusive host-side wired
+attachments, matching the validated PA0/PA2 model. IR remains independent.
+
 ## Current stop line
 
-LCD mirror, virtual special-key injection, reduced build/validate and PC/Send core bridge are
-closed. Do not reopen those gates without contrary evidence.
+Reduced build/validate, LCD bridge, special-key matrix injection, PC/Send and wired
+Print→CUPS-PDF are closed at core/runtime level. The GTK Save-As dialogs still need one live
+graphical acceptance pass before Surface installation.
 
-The next isolated implementation gate is **wired Print → host PDF**. IR remains out of scope
-for that increment.
+The next isolated implementation gate is **IR transport visualization**.
 
 ## Next stable code increment
 
-Closed scope for wired printing:
+Closed scope for IR:
 
-1. extract/reuse the already validated wired printer signal path from the existing diagnostic
-   implementation rather than inventing a new firmware shortcut;
-2. expose `Impresora conectada` as the corresponding hardware-visible ready state;
-3. collect one completed wired print job while preserving Print as a normal matrix key;
-4. pass that completed job to one host print/PDF backend and open the GTK Save-As flow only
-   after firmware transmission completes;
-5. require one short stock-v3.1.4 print job to produce a valid PDF, then STOP.
+1. recover the already established IR signal/byte source from the diagnostic implementation;
+2. expose activity only when `Infrarrojo activo` is enabled;
+3. emit real transmitted bytes to the existing `IR_BYTES` event path and terminate with
+   `IR_DONE`;
+4. show only the rolling hexadecimal display/count already specified;
+5. verify one Send-over-IR and one Print-over-IR transmission reaches logical completion
+   without TXT/PDF creation, then STOP.
 
-Do not add IR, payload execution, broader printer emulation or Surface installation inside
+Do not add payload execution, broader IrDA protocol emulation or Surface installation inside
 this gate.
