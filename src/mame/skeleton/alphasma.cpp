@@ -417,7 +417,7 @@ INPUT_CHANGED_MEMBER(asma2k_state::pc_connected_changed)
 
 bool asma2k_state::pc_connected()
 {
-	return m_ui_pc_override ? m_ui_pc_connected : pc_connected();
+	return m_ui_pc_override ? m_ui_pc_connected : BIT(m_pc_connected->read(), 0);
 }
 
 void asma2k_state::pc_keyboard_reset()
