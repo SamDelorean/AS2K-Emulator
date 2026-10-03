@@ -37,9 +37,11 @@ For an unattended run, use:
 AS2K_ASSUME_YES=1 sh install-as2k.sh
 ```
 
-In unattended mode the script does not wait for package-manager or Git prompts and requires
-passwordless/noninteractive `sudo`. Firmware and DictROM paths must already be supplied
-through `AS2K_FIRMWARE` / `AS2K_DICTROM` or the expected files must be beside the SH.
+In unattended mode the script does not wait for package-manager or Git prompts. If it is
+already running as root (for example through an authorized Commander session), it executes
+privileged steps directly; otherwise it requires passwordless/noninteractive `sudo`. Firmware
+and DictROM paths must already be supplied through `AS2K_FIRMWARE` / `AS2K_DICTROM` or the
+expected files must be beside the SH.
 
 The script performs the following work in sequence:
 
