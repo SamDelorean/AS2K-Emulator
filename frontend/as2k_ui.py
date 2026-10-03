@@ -221,7 +221,6 @@ class AS2KWindow(Gtk.ApplicationWindow):
         machine_root.set_submenu(machine_menu)
         bar.append(machine_root)
         self._menu_item(machine_menu, "Reiniciar AlphaSmart", self._reset_machine)
-        self._menu_item(machine_menu, "Encender / apagar", self._toggle_power)
         machine_menu.append(Gtk.SeparatorMenuItem())
         self.pc_item = self._check_item(machine_menu, "PC conectado", self._toggle_pc)
         self.printer_item = self._check_item(machine_menu, "Impresora conectada", self._toggle_printer)
@@ -285,7 +284,7 @@ class AS2KWindow(Gtk.ApplicationWindow):
     @staticmethod
     def _virtual_keys():
         return [
-            ("Power", "KEY POWER"), ("Esc", "KEY ESC"),
+            ("Esc", "KEY ESC"),
             *[(f"F{i}", f"KEY F{i}") for i in range(1, 9)],
             ("Print", "KEY PRINT"), ("Spell", "KEY SPELL"),
             ("Find", "KEY FIND"), ("Clear", "KEY CLEAR"),
@@ -487,9 +486,6 @@ class AS2KWindow(Gtk.ApplicationWindow):
 
     def _reset_machine(self, *_args) -> None:
         self._send_control("MACHINE RESET")
-
-    def _toggle_power(self, *_args) -> None:
-        self._send_control("MACHINE POWER")
 
     def _toggle_pc(self, item: Gtk.CheckMenuItem) -> None:
         self.pc_connected = item.get_active()
