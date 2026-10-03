@@ -436,7 +436,6 @@ class AS2KWindow(Gtk.ApplicationWindow):
         self._send_control("MACHINE POWER")
 
     def _toggle_pc(self, item: Gtk.CheckMenuItem) -> None:
-        was_connected = self.pc_connected
         self.pc_connected = item.get_active()
         self._send_control(f"PC {'ON' if self.pc_connected else 'OFF'}")
         self._update_header()
