@@ -14,7 +14,7 @@ This table distinguishes source prepared statically from behavior proven by nati
 | Normal firmware boot | PRESERVED BY DESIGN | PENDING full runtime |
 | Direct DictROM bootstrap | PREPARED | PENDING full runtime |
 | LCD 40x4 core | DONOR/SHARED | DRIVER COMPILE PASS |
-| Standalone AS2K GTK UI shell | IMPLEMENTED | Python static gate PASS; live Surface test PENDING |
+| Standalone AS2K GTK UI shell | IMPLEMENTED | T640 graphical path passed except prior FFmpeg blocker; Surface test PENDING |
 | LCD mirror core→UI | IMPLEMENTED | RUNTIME PASS (8640-byte framebuffer) |
 | Mouse special keys→matrix | IMPLEMENTED | RUNTIME PASS (Find + Send) |
 | 100/150/200/fullscreen UI | IMPLEMENTED | live GUI test PENDING |
@@ -22,6 +22,7 @@ This table distinguishes source prepared statically from behavior proven by nati
 | MP4/H.264 LCD recording, no audio | IMPLEMENTED | FFmpeg/live GUI test PENDING |
 | Ayuda→Atajos de teclado | IMPLEMENTED | static gate PASS; live GUI test PENDING |
 | Workbench payload selector | UI IMPLEMENTED | core payload/load bridge PENDING |
+| Ordinary host keyboard → AS2K matrix | IMPLEMENTED via KEYDOWN/KEYUP | fresh runtime equivalence gate PENDING result |
 | Keyboard/F1-F8/sleep-wake | DONOR/SHARED | DRIVER COMPILE PASS |
 | 128 KiB NVRAM/banking | DONOR + external DictROM refactor | DRIVER COMPILE PASS |
 | PC host-present state from UI | IMPLEMENTED through existing PA host-sense path | RUNTIME PASS |
@@ -32,9 +33,10 @@ This table distinguishes source prepared statically from behavior proven by nati
 | CUPS/PDF printing | IMPLEMENTED for verified HP/PCL-text subset | RUNTIME PASS; live GTK Save As PENDING |
 | Power virtual key | UI PRESENT | hardware contract intentionally PENDING |
 | Save-state path isolation | LAUNCHER PREPARED | PENDING runtime |
-| Linux command/menu installation | PREPARED | packaging smoke PASS; Surface package integration PENDING |
+| Linux command/menu installation | COMPLETE SOURCE PATH | core+GTK launcher and full-resource installer prepared; Surface execution PENDING |
 | Reduced dependency closure | CLOSED | REDUCED BUILD PASS |
 | `-validate` | — | PASS |
+| One-SH Surface local build/install | IMPLEMENTED as `install-as2k.sh` | target execution PENDING |
 | Surface RT installed stable | — | PENDING |
 
 ## Validation performed on T640
@@ -191,6 +193,34 @@ emulator assertion: the shell can see X11 display `:0` but has no Xauthority per
 an MP4-test blocker so the rest of the GTK checks can still run once a usable display exists.
 
 No compilation was launched for this GTK acceptance gate and no execution was polled.
+
+## Surface local-install preparation — SOURCE COMPLETE
+
+The installation path has been reduced to the user-requested workflow: one visible
+`install-as2k.sh` executed locally on the Surface.
+
+Prepared source changes:
+
+- ordinary physical host keyboard make/break is forwarded by GTK as `KEYDOWN/KEYUP` and enters
+  the same established AS2000 keyboard matrix as MAME's physical input ports;
+- the installed launcher now starts the reduced core and GTK frontend together and owns the
+  runtime queue/LCD bridge lifecycle;
+- the stable installer now installs the core, GTK frontend, CUPS/PDF helper and keyboard-help
+  resource rather than only the MAME-derived binary;
+- the standalone Surface installer installs build/runtime dependencies, shallow-clones the two
+  source trees, compiles locally, validates, installs, configures private Firmware/DictROM,
+  creates the menu entry and desktop shortcut, and performs final static/core validation;
+- Alpine/postmarketOS package handling includes GTK3/PyGObject, SDL2 development packages,
+  FFmpeg, CUPS/cups-filters and the reduced MAME build toolchain;
+- the source trees created by the installer are retained; the script does not delete or reset
+  pre-existing user repositories.
+
+A deterministic `scripts/test-ui-keyboard-runtime.sh` now compares the LCD result of one
+ordinary key delivered through MAME's native keyboard path against the new GTK/core matrix
+bridge. Its fresh native run was launched in an isolated temporary checkout under the
+two-Commander-call policy; no additional Commander polling is allowed for this preparation
+increment, so the runtime result must remain PENDING until evidence is obtained without
+breaking that rule.
 
 ## Current stop line
 
