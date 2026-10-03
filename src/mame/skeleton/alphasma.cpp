@@ -1882,6 +1882,12 @@ void asma2k_state::asma2k_mem(address_map &map)
 {
 	map.unmap_value_high();
 	map(0x0000, 0x7fff).view(m_io_view);
+
+	// Recovered validated AS2000 PA6 map behavior: peripheral/DictROM
+	// addresses overlay RAM, but ordinary addresses remain RAM-backed while
+	// PA6 is low.  Stock IrDA can take asynchronous interrupts in this state
+	// and uses the underlying RAM for stack traffic.
+	m_io_view[0](0x0000, 0x7fff).bankrw("rambank");
 	m_io_view[0](0x2000, 0x2000).rw(FUNC(asma2k_state::kb_r), FUNC(asma2k_state::kb_matrixh_w));
 	m_io_view[0](0x4000, 0x4000).w(FUNC(asma2k_state::lcd_ctrl_w));
 	m_io_view[0](0x4000, 0x7fff).r(FUNC(asma2k_state::dictrom_r));
