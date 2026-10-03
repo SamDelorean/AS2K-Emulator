@@ -1574,6 +1574,18 @@ TIMER_CALLBACK_MEMBER(asma2k_state::ir_peer_timer)
 	{
 		m_ir_peer_active = false;
 		ir_peer_drive(true);
+
+		// A stock transmitter can finish its frame while the peer is still
+		// completing the previous optical response.  The recovered peer already
+		// records the next protocol action in m_ir_peer_pending; preserve that
+		// action instead of losing it merely because TX_DRAIN occurred while the
+		// peer was active.
+		if (m_ir_peer_pending)
+		{
+			m_ir_peer_timer->adjust(attotime::from_msec(2));
+			return;
+		}
+
 		if (m_ir_peer_primary && m_ir_peer_stage == 1)
 		{
 			if (m_ir_peer_xid_slot < 6)
