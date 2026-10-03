@@ -27,7 +27,7 @@ This table distinguishes source prepared statically from behavior proven by nati
 | PC host-present state from UI | IMPLEMENTED through existing PA host-sense path | RUNTIME PASS |
 | PC Send physical-port decoding | VALIDATED DONOR + UI session integration | RUNTIME PASS |
 | Send Save-As-on-disconnect | IMPLEMENTED core event + GTK Save As | CORE EVENT PASS; live GTK dialog PENDING |
-| IR hexadecimal display UI | IMPLEMENTED | actual IR byte source PENDING |
+| IR hexadecimal display UI | IMPLEMENTED | SEND/PRINT RUNTIME PASS; no file persistence |
 | Printer connected UI | IMPLEMENTED | PA0 ready-state + wired transport RUNTIME PASS |
 | CUPS/PDF printing | IMPLEMENTED for verified HP/PCL-text subset | RUNTIME PASS; live GTK Save As PENDING |
 | Power virtual key | UI PRESENT | hardware contract intentionally PENDING |
@@ -143,25 +143,57 @@ regression is `scripts/test-ui-print-runtime.sh`.
 The wired printer and PC keyboard are now treated as mutually exclusive host-side wired
 attachments, matching the validated PA0/PA2 model. IR remains independent.
 
+## IrDA transport visualization — PASS
+
+The IR gate is closed by **recovering the already validated implementation**, not by
+reconstructing the protocol.
+
+The stable build now stages the previously proven MC68HC11 PA7/PAI pulse-accumulator support
+and firmware-defined TX/session observers, and reuses the validated virtual IrDA peer. The
+previously proven PA6 memory-map behavior was also restored: peripheral/DictROM locations
+overlay RAM while ordinary addresses remain RAM-backed, which is required for asynchronous
+IrDA interrupt stack traffic.
+
+Stable-specific adaptation is deliberately limited to output policy:
+
+- actual firmware-transmitted bytes are emitted to the existing `IR_BYTES` UI event;
+- the completed stock Send/Print return emits `IR_DONE`;
+- the old engineering RAW/TXT/PCL/PDF sinks are not present in stable;
+- the frontend retains only its rolling hexadecimal display and byte counter.
+
+The regression reuses the historical validated stock-v3.1.4 fixtures independently:
+`run2-final/nvram` for Send and `run3-print-final2/nvram` for Print.
+
+Observed T640 result:
+
+```text
+AS2K reduced core build: PASS
+AS2K IR SEND runtime: PASS bytes=271
+AS2K IR PRINT runtime: PASS bytes=808
+AS2K UI IR runtime: PASS
+```
+
+The runtime gate also rejects any TXT/PDF/PCL/PRN artifact in the IR output directory, so
+IR remains visualization-only as required.
+
 ## Current stop line
 
-Reduced build/validate, LCD bridge, special-key matrix injection, PC/Send and wired
-Print→CUPS-PDF are closed at core/runtime level. The GTK Save-As dialogs still need one live
-graphical acceptance pass before Surface installation.
+Reduced build/validate, LCD bridge, virtual matrix keys, PC/Send, wired Print→CUPS-PDF and
+Send/Print IrDA visualization are now closed at core/runtime level. Do not reopen those gates
+without contrary evidence.
 
-The next isolated implementation gate is **IR transport visualization**.
+The remaining pre-Surface work is a **single live GTK acceptance pass** for the already
+implemented frontend behavior: visible LCD, menu/status updates, Send Save-As, wired Print
+PDF Save-As, IR rolling hex/completion, screenshot and video controls.
 
 ## Next stable code increment
 
-Closed scope for IR:
+Closed scope:
 
-1. recover the already established IR signal/byte source from the diagnostic implementation;
-2. expose activity only when `Infrarrojo activo` is enabled;
-3. emit real transmitted bytes to the existing `IR_BYTES` event path and terminate with
-   `IR_DONE`;
-4. show only the rolling hexadecimal display/count already specified;
-5. verify one Send-over-IR and one Print-over-IR transmission reaches logical completion
-   without TXT/PDF creation, then STOP.
+1. run the existing core and GTK frontend together in one graphical session;
+2. exercise only the already implemented UI paths listed above;
+3. correct integration defects only—no protocol/hardware re-analysis;
+4. when the live GTK gate passes, prepare the postmarketOS/Surface RT installation package
+   and launcher as the following increment.
 
-Do not add payload execution, broader IrDA protocol emulation or Surface installation inside
-this gate.
+Payload execution and unrelated diagnostic work remain out of scope.
