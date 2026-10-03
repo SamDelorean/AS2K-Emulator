@@ -37,7 +37,8 @@ Implemented in the shell:
 
 The front-end accepts two optional paths:
 
-- `AS2K_UI_CONTROL_FIFO` — newline-delimited commands from the UI to the emulator core;
+- `AS2K_UI_CONTROL_FILE` — append-only newline-delimited commands from the UI to the emulator core;
+- `AS2K_UI_EVENT_FILE` — append-only tab-delimited events from the core to the UI;
 - `AS2K_UI_FRAME_FILE` — raw LCD mirror, exactly 240x36 bytes, one byte per pixel (`0` or `1`).
 
 When the variables are not set, paths default under `$XDG_RUNTIME_DIR/as2k/` (or a private
@@ -55,9 +56,17 @@ The current command vocabulary is intentionally human-readable and provisional:
 The core must translate virtual key commands into the same keyboard-matrix transitions as the
 physical AlphaSmart keys. The front-end must not call firmware routines directly.
 
-A later bridge increment will add core-to-UI event delivery for completed Send captures,
-printer jobs and IR bytes. That bridge must preserve the already validated PC Send path and
-must not import diagnostic tracing into stable.
+The core side now implements LCD mirroring, virtual special-key injection through the
+existing keyboard matrix, PC-present override through the validated host-sense path, and
+completed Send-capture publication.  Printer transport and the real IR-byte source remain
+separate pending increments; the event vocabulary already reserves IR_BYTES/IR_DONE.
+
+## Keyboard shortcuts help
+
+`Ayuda → Atajos de teclado…` opens `alphasmart_2000_shortcuts.txt` in a read-only
+scrollable text window.  The confirmed section is derived from the AlphaSmart 2000 User
+Manual (May 1999); project-only shortcut notes that are not yet confirmed for AS2000 are
+kept in a separately labelled section rather than silently merged.
 
 ## Local syntax gate
 
