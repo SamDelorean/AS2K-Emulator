@@ -31,7 +31,6 @@ This table distinguishes source prepared statically from behavior proven by nati
 | IR hexadecimal display UI | IMPLEMENTED | SEND/PRINT RUNTIME PASS; no file persistence |
 | Printer connected UI | IMPLEMENTED | PA0 ready-state + wired transport RUNTIME PASS |
 | CUPS/PDF printing | IMPLEMENTED for verified HP/PCL-text subset | RUNTIME PASS; live GTK Save As PENDING |
-| Power virtual key | UI PRESENT | hardware contract intentionally PENDING |
 | Save-state path isolation | LAUNCHER PREPARED | PENDING runtime |
 | Linux command/menu installation | COMPLETE SOURCE PATH | core+GTK launcher and full-resource installer prepared; Surface execution PENDING |
 | Reduced dependency closure | CLOSED | REDUCED BUILD PASS |
@@ -221,6 +220,14 @@ bridge. Its fresh native run was launched in an isolated temporary checkout unde
 two-Commander-call policy; no additional Commander polling is allowed for this preparation
 increment, so the runtime result must remain PENDING until evidence is obtained without
 breaking that rule.
+
+## Machine control simplification — RESET ONLY
+
+The stable UI no longer exposes a Power button or `Encender / apagar` menu item. The unused
+`KEY POWER` / `MACHINE POWER` placeholder path has also been removed from the core bridge.
+
+Stable machine control is now deliberately limited to `MACHINE RESET`, matching the product
+requirement for the first installable version.
 
 ## Current stop line
 
