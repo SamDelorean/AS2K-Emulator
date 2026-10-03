@@ -17,20 +17,20 @@ This table distinguishes source prepared statically from behavior proven by nati
 | Standalone AS2K GTK UI shell | IMPLEMENTED | T640 graphical path passed except prior FFmpeg blocker; Surface test PENDING |
 | LCD mirror core→UI | IMPLEMENTED | RUNTIME PASS (8640-byte framebuffer) |
 | Mouse special keys→matrix | IMPLEMENTED | RUNTIME PASS (Find + Send) |
-| 100/150/200/fullscreen UI | IMPLEMENTED | live GUI test PENDING |
-| PNG LCD screenshot | IMPLEMENTED | live GUI test PENDING |
-| MP4/H.264 LCD recording, no audio | IMPLEMENTED | FFmpeg/live GUI test PENDING |
-| Ayuda→Atajos de teclado | IMPLEMENTED | static gate PASS; live GUI test PENDING |
+| 100/150/200/fullscreen UI | IMPLEMENTED | human acceptance PENDING |
+| PNG LCD screenshot | IMPLEMENTED | human acceptance PENDING |
+| MP4/H.264 LCD recording, no audio | IMPLEMENTED | human acceptance PENDING |
+| Ayuda→Atajos de teclado | IMPLEMENTED | static gate PASS; human acceptance PENDING |
 | Workbench payload selector | UI IMPLEMENTED | core payload/load bridge PENDING |
-| Ordinary host keyboard → AS2K matrix | IMPLEMENTED via KEYDOWN/KEYUP | fresh runtime equivalence gate PENDING result |
+| Ordinary host keyboard → AS2K matrix | IMPLEMENTED via KEYDOWN/KEYUP | human acceptance on installed stable PENDING |
 | Keyboard/F1-F8/sleep-wake | DONOR/SHARED | DRIVER COMPILE PASS |
 | 128 KiB NVRAM/banking | DONOR + external DictROM refactor | DRIVER COMPILE PASS |
 | PC host-present state from UI | IMPLEMENTED through existing PA host-sense path | RUNTIME PASS |
 | PC Send physical-port decoding | VALIDATED DONOR + UI session integration | RUNTIME PASS |
-| Send Save-As-on-disconnect | IMPLEMENTED core event + GTK Save As | CORE EVENT PASS; live GTK dialog PENDING |
+| Send Save-As-on-disconnect | IMPLEMENTED core event + GTK Save As | CORE EVENT PASS; final dialog check is human |
 | IR hexadecimal display UI | IMPLEMENTED | SEND/PRINT RUNTIME PASS; no file persistence |
 | Printer connected UI | IMPLEMENTED | PA0 ready-state + wired transport RUNTIME PASS |
-| CUPS/PDF printing | IMPLEMENTED for verified HP/PCL-text subset | RUNTIME PASS; live GTK Save As PENDING |
+| CUPS/PDF printing | IMPLEMENTED for verified HP/PCL-text subset | RUNTIME PASS; final GTK Save As check is human |
 | Save-state path isolation | LAUNCHER PREPARED | PENDING runtime |
 | Linux command/menu installation | COMPLETE SOURCE PATH | core+GTK launcher and full-resource installer prepared; Surface execution PENDING |
 | Reduced dependency closure | CLOSED | REDUCED BUILD PASS |
@@ -214,12 +214,10 @@ Prepared source changes:
 - the source trees created by the installer are retained; the script does not delete or reset
   pre-existing user repositories.
 
-A deterministic `scripts/test-ui-keyboard-runtime.sh` now compares the LCD result of one
-ordinary key delivered through MAME's native keyboard path against the new GTK/core matrix
-bridge. Its fresh native run was launched in an isolated temporary checkout under the
-two-Commander-call policy; no additional Commander polling is allowed for this preparation
-increment, so the runtime result must remain PENDING until evidence is obtained without
-breaking that rule.
+A deterministic `scripts/test-ui-keyboard-runtime.sh` remains in the repository as an
+engineering regression aid, but it is not a release requirement for stable. The stable build
+intentionally carries no diagnostic instrumentation, so final functional acceptance of ordinary
+typing and GUI behavior is performed manually by the user on the installed target.
 
 ## Machine control simplification — RESET ONLY
 
@@ -240,24 +238,39 @@ At reset, any staged Firmware and/or DictROM is committed before execution resum
 both images and then issuing one reset is therefore supported. This removes the earlier
 hot-load/restart bridge debt without adding automatic reset behavior.
 
+## Stable validation policy — STATIC AUTOMATION + HUMAN FUNCTIONAL TEST
+
+The stable application is intentionally non-instrumented. Automated release validation therefore
+covers source/static checks, shell/Python syntax, packaging invariants and successful compilation/
+installation only. Runtime user-facing behavior is accepted manually on the target machine.
+
+Historical engineering runtime regressions remain useful evidence for already closed hardware
+paths, but they are not rerun as a prerequisite for every stable build.
+
 ## Current stop line
 
 Reduced build/validate, LCD bridge, virtual matrix keys, PC/Send, wired Print→CUPS-PDF and
 Send/Print IrDA visualization are now closed at core/runtime level. Do not reopen those gates
 without contrary evidence.
 
-The remaining pre-Surface work is a **single live GTK acceptance pass** for the already
-implemented frontend behavior: visible LCD, menu/status updates, Send Save-As, wired Print
-PDF Save-As, IR rolling hex/completion, screenshot and video controls.
+No further automated runtime gate is required for stable. Because the stable emulator does not
+carry diagnostic instrumentation, release automation stops at static/source validation and
+successful build/installation checks.
 
-## Next stable code increment
+Final functional acceptance is human on the target Surface: launch the installed application,
+type on the physical keyboard, verify LCD and special keys, select ROM/DictROM and apply them
+with manual Reset, and exercise the user-facing Save As / screenshot / video flows as desired.
+Any defect found there becomes a separate bounded correction increment; closed Send/Print/IR
+protocol gates are not reopened without contrary evidence.
+
+## Next stable increment
 
 Closed scope:
 
-1. run the existing core and GTK frontend together in one graphical session;
-2. exercise only the already implemented UI paths listed above;
-3. correct integration defects only—no protocol/hardware re-analysis;
-4. when the live GTK gate passes, prepare the postmarketOS/Surface RT installation package
-   and launcher as the following increment.
+1. run the static validation gate on the current HEAD;
+2. confirm the reduced build completes cleanly;
+3. freeze the installer/source revisions;
+4. install on the Surface with `install-as2k.sh`;
+5. perform human functional acceptance on the installed application.
 
 Payload execution and unrelated diagnostic work remain out of scope.
