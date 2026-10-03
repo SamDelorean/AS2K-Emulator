@@ -8,8 +8,8 @@ This table distinguishes source prepared statically from behavior proven by nati
 | Component | Source status | Native/runtime status |
 |---|---|---|
 | AS2K-only registration | IMPLEMENTED | REDUCED BUILD PASS |
-| External Firmware socket | PREPARED | PENDING UI load bridge |
-| External DictROM socket | PREPARED | PENDING UI load bridge |
+| External Firmware socket | IMPLEMENTED | UI selection stages image; manual Reset applies it |
+| External DictROM socket | IMPLEMENTED | UI selection stages image; manual Reset applies it |
 | No fixed proprietary ROM-set dependency | STATIC PASS | REDUCED BUILD/VALIDATE PASS |
 | Normal firmware boot | PRESERVED BY DESIGN | PENDING full runtime |
 | Direct DictROM bootstrap | PREPARED | PENDING full runtime |
@@ -228,6 +228,17 @@ The stable UI no longer exposes a Power button or `Encender / apagar` menu item.
 
 Stable machine control is now deliberately limited to `MACHINE RESET`, matching the product
 requirement for the first installable version.
+
+## ROM / DictROM selection — MANUAL RESET SEMANTICS
+
+Stable does not hot-swap either image. `Archivo → Abrir ROM…` and
+`Archivo → Abrir DictROM…` validate and stage the selected file independently. The active
+image remains unchanged until the user explicitly invokes
+`Máquina → Reiniciar AlphaSmart`.
+
+At reset, any staged Firmware and/or DictROM is committed before execution resumes. Selecting
+both images and then issuing one reset is therefore supported. This removes the earlier
+hot-load/restart bridge debt without adding automatic reset behavior.
 
 ## Current stop line
 
