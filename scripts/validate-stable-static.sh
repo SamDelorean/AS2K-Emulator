@@ -66,6 +66,13 @@ grep -F 'KEYDOWN ' "$DRIVER" >/dev/null \
 grep -F 'key-press-event' "$ROOT/frontend/as2k_ui.py" >/dev/null \
     || fail "ordinary keyboard bridge missing in GTK frontend"
 
+grep -F 'stage_image_file' "$DRIVER" >/dev/null \
+    || fail "manual-reset ROM/DictROM staging bridge missing"
+grep -F 'm_pending_firmware_valid' "$DRIVER" >/dev/null \
+    || fail "pending Firmware reset gate missing"
+grep -F 'm_pending_dictrom_valid' "$DRIVER" >/dev/null \
+    || fail "pending DictROM reset gate missing"
+
 for forbidden_power in 'KEY POWER' 'MACHINE POWER' 'Encender / apagar' '("Power",'; do
     if grep -F "$forbidden_power" "$DRIVER" "$ROOT/frontend/as2k_ui.py" "$ROOT/frontend/README.md" "$ROOT/docs/UI_CONTRACT.md" >/dev/null; then
         fail "stable UI/core still exposes removed Power control: $forbidden_power"
