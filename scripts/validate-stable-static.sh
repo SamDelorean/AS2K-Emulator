@@ -42,7 +42,7 @@ sh -n "$ROOT/scripts/build-stable-core.sh"
 sh -n "$ROOT/scripts/test-ui-send-runtime.sh"
 sh -n "$ROOT/scripts/test-ui-print-runtime.sh"
 sh -n "$ROOT/scripts/test-ui-ir-runtime.sh"
-test -s "$ROOT/patches/mc68hc11-pai.patch"
+python3 -m py_compile "$ROOT/scripts/patch-mc68hc11-pai.py"
 sh "$ROOT/scripts/validate-ui-static.sh"
 
 grep -F '@PREFIX@/bin/as2k' "$ROOT/packaging/as2k.desktop.in" >/dev/null \
