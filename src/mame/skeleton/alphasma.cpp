@@ -166,6 +166,8 @@ private:
 	void ui_process_command(std::string const &line);
 	void ui_emit_event(std::string const &line);
 	void ui_write_frame(bitmap_ind16 const &bitmap);
+	bool ui_key_location(std::string_view name, uint8_t &col, uint8_t &mask) const;
+	bool ui_set_key(std::string_view name, bool pressed);
 	bool ui_press_key(std::string_view name);
 	virtual void screen_updated(bitmap_ind16 const &bitmap) override;
 	TIMER_CALLBACK_MEMBER(ui_bridge_tick);
@@ -1713,7 +1715,7 @@ void asma2k_state::ui_bridge_poll()
 	}
 }
 
-bool asma2k_state::ui_press_key(std::string_view name)
+bool asma2k_state::ui_key_location(std::string_view name, uint8_t &col, uint8_t &mask) const
 {
 	struct key_map
 	{
@@ -1722,51 +1724,94 @@ bool asma2k_state::ui_press_key(std::string_view name)
 		uint8_t mask;
 	};
 
-	// These are the AlphaSmart 2000 matrix locations already used by the
-	// physical keyboard ports below.  The UI overlay therefore enters exactly
-	// the same kb_r/IRQ path; it never calls a firmware routine directly.
+	// Exact AlphaSmart 2000 matrix locations already declared by the physical
+	// input ports below. Ordinary host typing and virtual buttons therefore
+	// share kb_r/IRQ; the UI never calls firmware routines directly.
 	static constexpr key_map keys[] =
 	{
-		{ "ESC",   4,  0x80 },
-		{ "F1",   11,  0x10 },
-		{ "F2",   10,  0x10 },
-		{ "F3",   10,  0x01 },
-		{ "F4",   10,  0x02 },
-		{ "F5",    9,  0x02 },
-		{ "F6",    0,  0x02 },
-		{ "F7",    2,  0x01 },
-		{ "F8",    2,  0x10 },
-		{ "PRINT", 9,  0x10 },
-		{ "SPELL", 9,  0x20 },
-		{ "FIND",  7,  0x40 },
-		{ "CLEAR", 4,  0x20 },
-		{ "HOME",  4,  0x08 },
-		{ "END",   5,  0x40 },
-		{ "ENTER", 6,  0x10 },
-		{ "SEND",  7,  0x10 },
+		{ "RBRACKET",0,0x01 }, { "F6",0,0x02 }, { "K",0,0x04 }, { "I",0,0x08 },
+		{ "EQUALS",0,0x10 }, { "8",0,0x20 }, { "COMMA",0,0x40 },
+		{ "LALT",1,0x10 }, { "RALT",1,0x40 },
+		{ "F7",2,0x01 }, { "L",2,0x04 }, { "O",2,0x08 }, { "F8",2,0x10 },
+		{ "9",2,0x20 }, { "PERIOD",2,0x40 },
+		{ "LBRACKET",3,0x01 }, { "QUOTE",3,0x02 }, { "SEMICOLON",3,0x04 },
+		{ "P",3,0x08 }, { "MINUS",3,0x10 }, { "0",3,0x20 }, { "SLASH",3,0x80 },
+		{ "COMMAND",4,0x02 }, { "HOME",4,0x08 }, { "CLEAR",4,0x20 }, { "ESC",4,0x80 },
+		{ "DOWN",5,0x02 }, { "END",5,0x40 }, { "LEFT",5,0x80 },
+		{ "ENTER",6,0x10 }, { "RIGHT",6,0x80 },
+		{ "SEND",7,0x10 }, { "FIND",7,0x40 }, { "UP",7,0x80 },
+		{ "BACKSPACE",9,0x01 }, { "F5",9,0x02 }, { "BACKSLASH",9,0x04 },
+		{ "PRINT",9,0x10 }, { "SPELL",9,0x20 }, { "RETURN",9,0x40 }, { "SPACE",9,0x80 },
+		{ "F3",10,0x01 }, { "F4",10,0x02 }, { "D",10,0x04 }, { "E",10,0x08 },
+		{ "F2",10,0x10 }, { "3",10,0x20 }, { "C",10,0x40 },
+		{ "CAPSLOCK",11,0x01 }, { "S",11,0x04 }, { "W",11,0x08 }, { "F1",11,0x10 },
+		{ "2",11,0x20 }, { "X",11,0x40 },
+		{ "TAB",12,0x01 }, { "A",12,0x04 }, { "Q",12,0x08 }, { "GRAVE",12,0x10 },
+		{ "1",12,0x20 }, { "Z",12,0x40 }, { "LCTRL",12,0x80 },
+		{ "T",13,0x01 }, { "G",13,0x02 }, { "F",13,0x04 }, { "R",13,0x08 },
+		{ "5",13,0x10 }, { "4",13,0x20 }, { "V",13,0x40 }, { "B",13,0x80 },
+		{ "LSHIFT",14,0x01 }, { "RSHIFT",14,0x40 },
+		{ "Y",15,0x01 }, { "H",15,0x02 }, { "J",15,0x04 }, { "U",15,0x08 },
+		{ "6",15,0x10 }, { "7",15,0x20 }, { "M",15,0x40 }, { "N",15,0x80 },
 	};
 
 	for (auto const &entry : keys)
 	{
-		if (entry.name != name)
-			continue;
-
-		if (m_ui_key_col >= 0)
-			m_ui_keyboard[m_ui_key_col] |= m_ui_key_mask;
-
-		m_ui_key_col = entry.col;
-		m_ui_key_mask = entry.mask;
-		m_ui_keyboard[entry.col] &= ~entry.mask;
-		m_maincpu->set_input_line(MC68HC11_IRQ_LINE, ASSERT_LINE);
-		m_ui_key_release_timer->adjust(attotime::from_msec(45));
-		return true;
+		if (entry.name == name)
+		{
+			col = entry.col;
+			mask = entry.mask;
+			return true;
+		}
 	}
-
 	return false;
+}
+
+bool asma2k_state::ui_set_key(std::string_view name, bool pressed)
+{
+	uint8_t col = 0;
+	uint8_t mask = 0;
+	if (!ui_key_location(name, col, mask))
+		return false;
+
+	if (pressed)
+		m_ui_keyboard[col] &= ~mask;
+	else
+		m_ui_keyboard[col] |= mask;
+	m_maincpu->set_input_line(MC68HC11_IRQ_LINE, ASSERT_LINE);
+	return true;
+}
+
+bool asma2k_state::ui_press_key(std::string_view name)
+{
+	uint8_t col = 0;
+	uint8_t mask = 0;
+	if (!ui_key_location(name, col, mask))
+		return false;
+
+	if (m_ui_key_col >= 0)
+		m_ui_keyboard[m_ui_key_col] |= m_ui_key_mask;
+
+	m_ui_key_col = col;
+	m_ui_key_mask = mask;
+	m_ui_keyboard[col] &= ~mask;
+	m_maincpu->set_input_line(MC68HC11_IRQ_LINE, ASSERT_LINE);
+	m_ui_key_release_timer->adjust(attotime::from_msec(45));
+	return true;
 }
 
 void asma2k_state::ui_process_command(std::string const &line)
 {
+	if (line.rfind("KEYDOWN ", 0) == 0 || line.rfind("KEYUP ", 0) == 0)
+	{
+		bool const pressed = line.rfind("KEYDOWN ", 0) == 0;
+		size_t const prefix = pressed ? 8 : 6;
+		std::string_view const key(line.data() + prefix, line.size() - prefix);
+		if (!ui_set_key(key, pressed))
+			ui_emit_event("STATUS\tUnsupported host key: " + std::string(key));
+		return;
+	}
+
 	if (line.rfind("KEY ", 0) == 0)
 	{
 		std::string_view const key(line.data() + 4, line.size() - 4);
