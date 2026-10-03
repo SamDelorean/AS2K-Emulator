@@ -3,25 +3,28 @@ set -eu
 
 usage()
 {
-    echo "Usage: $0 CORE_BIN ROM1 DICTROM SEED_NVRAM_DIR" >&2
+    echo "Usage: $0 CORE_BIN ROM1 DICTROM SEND_NVRAM_DIR PRINT_NVRAM_DIR" >&2
     exit 2
 }
 
-[ "$#" -eq 4 ] || usage
+[ "$#" -eq 5 ] || usage
 CORE_BIN=$1
 ROM1=$2
 DICTROM=$3
-SEED_NVRAM=$4
+SEND_NVRAM=$4
+PRINT_NVRAM=$5
 
 [ -x "$CORE_BIN" ] || { echo "CORE_BIN is not executable" >&2; exit 2; }
 [ -f "$ROM1" ] || { echo "ROM1 not found" >&2; exit 2; }
 [ -f "$DICTROM" ] || { echo "DICTROM not found" >&2; exit 2; }
-[ -d "$SEED_NVRAM" ] || { echo "SEED_NVRAM_DIR not found" >&2; exit 2; }
+[ -d "$SEND_NVRAM" ] || { echo "SEND_NVRAM_DIR not found" >&2; exit 2; }
+[ -d "$PRINT_NVRAM" ] || { echo "PRINT_NVRAM_DIR not found" >&2; exit 2; }
 
 CORE_BIN=$(CDPATH= cd -- "$(dirname -- "$CORE_BIN")" && pwd)/$(basename -- "$CORE_BIN")
 ROM1=$(CDPATH= cd -- "$(dirname -- "$ROM1")" && pwd)/$(basename -- "$ROM1")
 DICTROM=$(CDPATH= cd -- "$(dirname -- "$DICTROM")" && pwd)/$(basename -- "$DICTROM")
-SEED_NVRAM=$(CDPATH= cd -- "$SEED_NVRAM" && pwd)
+SEND_NVRAM=$(CDPATH= cd -- "$SEND_NVRAM" && pwd)
+PRINT_NVRAM=$(CDPATH= cd -- "$PRINT_NVRAM" && pwd)
 
 WORK=$(mktemp -d)
 cleanup() { rm -rf "$WORK"; }
@@ -33,7 +36,11 @@ run_case()
     kind=$1
     dir="$WORK/$kind"
     mkdir -p "$dir"/output "$dir"/cfg "$dir"/state "$dir"/runtime
-    cp -a "$SEED_NVRAM" "$dir/nvram"
+    if [ "$kind" = SEND ]; then
+        cp -a "$SEND_NVRAM" "$dir/nvram"
+    else
+        cp -a "$PRINT_NVRAM" "$dir/nvram"
+    fi
     chmod 700 "$dir/runtime"
     : > "$dir/control.queue"
     : > "$dir/events.queue"
@@ -76,7 +83,7 @@ emu.register_frame_done(function()
 
   if stage==1 then
     if mode=='SEND' then
-      nat:post('IR SEND TEST 0123456789')
+      nat:post_coded('IR TEST 123')
       stage=2; delay=420
     else
       nat:post('IR PRINT MULTIFRAME 0123456789 ABCDEFGHIJKLMNOPQRSTUVWXYZ')
