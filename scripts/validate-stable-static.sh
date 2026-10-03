@@ -40,6 +40,7 @@ sh -n "$ROOT/scripts/install-stable.sh"
 sh -n "$ROOT/scripts/uninstall-stable.sh"
 sh -n "$ROOT/scripts/build-stable-core.sh"
 sh -n "$ROOT/scripts/test-ui-send-runtime.sh"
+sh -n "$ROOT/scripts/test-ui-print-runtime.sh"
 sh "$ROOT/scripts/validate-ui-static.sh"
 
 grep -F '@PREFIX@/bin/as2k' "$ROOT/packaging/as2k.desktop.in" >/dev/null \
