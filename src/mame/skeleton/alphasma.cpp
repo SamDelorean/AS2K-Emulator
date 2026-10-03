@@ -143,8 +143,6 @@ private:
 	TIMER_CALLBACK_MEMBER(printer_frame_done);
 	void printer_capture_byte(uint8_t byte);
 	void printer_capture_end(bool complete);
-	uint8_t cpu_state8(char const *symbol) const;
-	void ir_instruction_w(uint16_t pc);
 	void ir_tx_byte_w(uint8_t data);
 	void ir_event_w(uint8_t event);
 	void ir_capture_begin(char const *kind);
@@ -1026,35 +1024,6 @@ void asma2k_state::send_sink_end()
 }
 
 
-
-uint8_t asma2k_state::cpu_state8(char const *symbol) const
-{
-	for (auto const &entry : m_maincpu->state_entries())
-		if (!strcmp(entry->symbol(), symbol))
-			return uint8_t(m_maincpu->state_int(entry->index()));
-	return 0;
-}
-
-void asma2k_state::ir_instruction_w(uint16_t pc)
-{
-	if (!m_ui_ir_enabled)
-		return;
-
-	// Recovered byte/session observation points from the validated IrDA work.
-	// They are passive observations of stock v3.1.4 execution.  No firmware
-	// state, RAM, PC or register is modified here.
-	switch (pc)
-	{
-	case 0xd1ef: ir_tx_byte_w(cpu_state8("B")); break; // actual STAB $05BA enqueue
-	case 0xd220: ir_event_w(0x01); break;              // TX drained/frame wait complete
-	case 0xd0d7: ir_event_w(0x30); break;              // IrDA init complete
-	case 0xd2dc: ir_event_w(0x10); break;              // Send IrDA session entry
-	case 0x9719: ir_event_w(0x11); break;              // Send IrDA return
-	case 0xd437: ir_event_w(0x20); break;              // Print IrDA session entry
-	case 0xd47d: ir_event_w(0x21); break;              // Print IrDA return
-	default: break;
-	}
-}
 
 void asma2k_state::ir_ui_flush()
 {
@@ -2284,7 +2253,8 @@ void asma2k_state::asma2k(machine_config &config)
 	alphasmart(config);
 	m_maincpu->in_pa_callback().set(FUNC(asma2k_state::asma2k_port_a_r));
 	m_maincpu->out_pd_callback().set(FUNC(asma2k_state::asma2k_port_d_w));
-	m_maincpu->instruction_callback().set(FUNC(asma2k_state::ir_instruction_w));
+	m_maincpu->as2k_ir_tx_callback().set(FUNC(asma2k_state::ir_tx_byte_w));
+	m_maincpu->as2k_ir_event_callback().set(FUNC(asma2k_state::ir_event_w));
 	m_maincpu->set_addrmap(AS_PROGRAM, &asma2k_state::asma2k_mem);
 
 	// External user-supplied images.  These devices are intentionally not
