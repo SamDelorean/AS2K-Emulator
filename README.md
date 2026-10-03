@@ -19,6 +19,20 @@ The first traceable AS2K driver donor has now been imported on the preparation b
 
 The preparation branch already removes fixed proprietary ROM-set declarations, exposes mandatory external Firmware and DictROM image devices, isolates stable mutable data/output, and contains the system-installation launcher/desktop scripts. Direct DictROM Bootstrap, stable printing completion and the reduced dependency closure remain build-gated work.
 
+## Surface RT / postmarketOS installation
+
+The intended personal installation path is a single visible shell script that compiles and
+installs locally on the target machine:
+
+```sh
+sh install-as2k.sh
+```
+
+It downloads shallow source trees, runs the existing reduced build/validation gate, installs
+the GTK frontend and launcher, and creates the application-menu/desktop entry. Firmware and
+DictROM remain user-supplied private files. See
+[docs/SURFACE_LOCAL_INSTALL.md](docs/SURFACE_LOCAL_INSTALL.md).
+
 ## Two functional variants
 
 Only two functional AS2K emulator variants are intended on the development machine:
