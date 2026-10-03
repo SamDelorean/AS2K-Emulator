@@ -1874,11 +1874,6 @@ void asma2k_state::ui_process_command(std::string const &line)
 		return;
 	}
 
-	if (line == "KEY POWER" || line == "MACHINE POWER")
-	{
-		ui_emit_event("STATUS\tPower-key emulation pending hardware contract");
-		return;
-	}
 
 	if (line.rfind("FIRMWARE ", 0) == 0 || line.rfind("DICTROM ", 0) == 0 ||
 		line.rfind("PAYLOAD ", 0) == 0 || line.rfind("PAYLOAD_FILE ", 0) == 0)
