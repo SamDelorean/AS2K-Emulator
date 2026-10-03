@@ -49,8 +49,8 @@ boot/reset; it is not a hot arbitrary PC jump.
 
 ### Máquina
 
-The user can control/reset the emulated machine and indicate PC, printer and IR attachment
-states. Checked state and the header must agree immediately. The wired PC and wired printer
+The user can reset the emulated machine and indicate PC, printer and IR attachment states.
+There is no separate Power control in stable. Checked state and the header must agree immediately. The wired PC and wired printer
 attachments are mutually exclusive because they share the validated host-side connection;
 enabling one disables the other. IR remains independent.
 
@@ -64,7 +64,7 @@ Only 100%, 150%, 200% and full screen are offered.
 
 The mouse row contains:
 
-`Power | Esc | F1 F2 F3 F4 F5 F6 F7 F8 | Print | Spell | Find | Clear | Home | End | Enter | Send`
+`Esc | F1 F2 F3 F4 F5 F6 F7 F8 | Print | Spell | Find | Clear | Home | End | Enter | Send`
 
 Ordinary QWERTY keys remain physical-keyboard input. Every virtual special key must create the
 same matrix transition as the corresponding AlphaSmart key.
