@@ -31,7 +31,9 @@ Implemented in the shell:
 - PC/Send capture buffer hook: when a connected PC session is closed, a non-empty capture can
   be saved as `.txt`;
 - IR activity line with the most recent 64 bytes in hexadecimal and a total byte count;
-- narrow Linux bridge contract for future core integration.
+- wired printer ready-state, physical PD0 serial decoding, completed PCL job delivery and
+  GTK Save As to PDF through the CUPS filter chain;
+- narrow Linux bridge contract for core integration.
 
 ## Bridge contract (R1)
 
