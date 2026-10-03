@@ -55,14 +55,14 @@ fi
 say "Instalando dependencias necesarias"
 if command -v apk >/dev/null 2>&1; then
     sudo apk add \
-        git build-base python3 py3-gobject3 gtk+3.0 ffmpeg cups-filters \
+        git build-base python3 py3-gobject3 gtk+3.0 ffmpeg cups cups-filters \
         sdl2-dev sdl2_ttf-dev fontconfig-dev pulseaudio-dev alsa-lib-dev \
         libxinerama-dev libxi-dev libxrandr-dev libxrender-dev libxext-dev \
         mesa-dev expat-dev
 elif command -v apt-get >/dev/null 2>&1; then
     sudo apt-get update
     sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y \
-        git build-essential python3 python3-gi gir1.2-gtk-3.0 ffmpeg cups-filters \
+        git build-essential python3 python3-gi gir1.2-gtk-3.0 ffmpeg cups cups-filters \
         libsdl2-dev libsdl2-ttf-dev libfontconfig-dev libpulse-dev libasound2-dev \
         libxinerama-dev libxi-dev libxrandr-dev libxrender-dev libxext-dev libgl1-mesa-dev
 else
