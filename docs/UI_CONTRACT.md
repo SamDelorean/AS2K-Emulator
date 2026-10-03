@@ -49,8 +49,10 @@ boot/reset; it is not a hot arbitrary PC jump.
 
 ### Máquina
 
-The user can control/reset the emulated machine and independently indicate PC, printer and IR
-attachment states. Checked state and the header must agree immediately.
+The user can control/reset the emulated machine and indicate PC, printer and IR attachment
+states. Checked state and the header must agree immediately. The wired PC and wired printer
+attachments are mutually exclusive because they share the validated host-side connection;
+enabling one disables the other. IR remains independent.
 
 The controls represent emulated external conditions. They are not decorative GUI modes.
 
