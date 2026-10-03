@@ -51,13 +51,15 @@ The current command vocabulary is intentionally human-readable and provisional:
 
 - `KEY POWER`, `KEY ESC`, `KEY F1` ... `KEY F8`, `KEY PRINT`, `KEY SPELL`, `KEY FIND`,
   `KEY CLEAR`, `KEY HOME`, `KEY END`, `KEY ENTER`, `KEY SEND`;
+- `KEYDOWN <matrix-key>` / `KEYUP <matrix-key>` for ordinary physical host-key make/break events;
 - `MACHINE RESET`, `MACHINE POWER`;
 - `PC ON|OFF`, `PRINTER ON|OFF`, `IR ON|OFF`;
 - `FIRMWARE <path>`, `DICTROM <path>`;
 - workbench only: `PAYLOAD STOCK|P0|P1|P1B|P2` and `PAYLOAD_FILE <path>`.
 
-The core must translate virtual key commands into the same keyboard-matrix transitions as the
-physical AlphaSmart keys. The front-end must not call firmware routines directly.
+The core translates both virtual buttons and ordinary host keyboard make/break events into the
+same AlphaSmart keyboard-matrix transitions as the physical machine. The front-end does not call
+firmware routines directly.
 
 The core side implements LCD mirroring, virtual special-key injection through the existing
 keyboard matrix, PC-present/Send capture, wired printer/PCL completion, and the recovered
