@@ -126,6 +126,7 @@ private:
 	DECLARE_DEVICE_IMAGE_LOAD_MEMBER(dictrom_load);
 	uint8_t firmware_r(offs_t offset);
 	uint8_t dictrom_r(offs_t offset);
+	bool stage_image_file(std::string const &path, bool firmware);
 	bool set_cpu_state(char const *symbol, uint64_t value);
 	void apply_direct_dictrom_bootstrap();
 	void lcd_ctrl_w(uint8_t data);
@@ -180,6 +181,13 @@ private:
 	required_device<generic_slot_device> m_dictrom;
 	required_ioport m_pc_connected;
 	required_ioport m_boot_mode;
+
+	std::array<uint8_t, 0x8000> m_active_firmware{};
+	std::array<uint8_t, 0x8000> m_pending_firmware{};
+	std::array<uint8_t, 0x20000> m_active_dictrom{};
+	std::array<uint8_t, 0x20000> m_pending_dictrom{};
+	bool m_pending_firmware_valid = false;
+	bool m_pending_dictrom_valid = false;
 
 	uint8_t m_lcd_ctrl = 0;
 	uint8_t m_dict_bank = 0;
@@ -1870,15 +1878,25 @@ void asma2k_state::ui_process_command(std::string const &line)
 	if (line == "MACHINE RESET")
 	{
 		machine().schedule_soft_reset();
-		ui_emit_event("STATUS\tSoft reset requested");
+		ui_emit_event("STATUS\tReinicio solicitado");
 		return;
 	}
 
-
-	if (line.rfind("FIRMWARE ", 0) == 0 || line.rfind("DICTROM ", 0) == 0 ||
-		line.rfind("PAYLOAD ", 0) == 0 || line.rfind("PAYLOAD_FILE ", 0) == 0)
+	if (line.rfind("FIRMWARE ", 0) == 0)
 	{
-		ui_emit_event("STATUS\tImage/payload selection recorded by UI; restart/load bridge pending");
+		stage_image_file(line.substr(9), true);
+		return;
+	}
+
+	if (line.rfind("DICTROM ", 0) == 0)
+	{
+		stage_image_file(line.substr(8), false);
+		return;
+	}
+
+	if (line.rfind("PAYLOAD ", 0) == 0 || line.rfind("PAYLOAD_FILE ", 0) == 0)
+	{
+		ui_emit_event("STATUS\tPayload selection recorded by UI; load bridge pending");
 		return;
 	}
 
@@ -1982,14 +2000,59 @@ DEVICE_IMAGE_LOAD_MEMBER(asma2k_state::dictrom_load)
 
 uint8_t asma2k_state::firmware_r(offs_t offset)
 {
-	return m_firmware->get_rom_base() ? m_firmware->read_rom(offset & 0x7fff) : 0xff;
+	return m_active_firmware[offset & 0x7fff];
 }
 
 uint8_t asma2k_state::dictrom_r(offs_t offset)
 {
-	return m_dictrom->get_rom_base()
-			? m_dictrom->read_rom((uint32_t(m_dict_bank) << 14) | (offset & 0x3fff))
-			: 0xff;
+	return m_active_dictrom[(uint32_t(m_dict_bank) << 14) | (offset & 0x3fff)];
+}
+
+bool asma2k_state::stage_image_file(std::string const &path, bool firmware)
+{
+	std::ifstream input(path, std::ios::in | std::ios::binary | std::ios::ate);
+	if (!input)
+	{
+		ui_emit_event(std::string("STATUS\tNo se pudo abrir ") +
+			(firmware ? "ROM: " : "DictROM: ") + path);
+		return false;
+	}
+
+	std::streamoff const size = input.tellg();
+	bool const size_ok = firmware
+			? (size == 0x8000 || size == 0x81e5)
+			: (size == 0x20000);
+	if (!size_ok)
+	{
+		ui_emit_event(std::string("STATUS\tTamaño inválido de ") +
+			(firmware ? "ROM" : "DictROM"));
+		return false;
+	}
+
+	input.seekg(0, std::ios::beg);
+	if (firmware)
+	{
+		input.read(reinterpret_cast<char *>(m_pending_firmware.data()), m_pending_firmware.size());
+		if (input.gcount() != std::streamsize(m_pending_firmware.size()))
+		{
+			ui_emit_event("STATUS\tNo se pudo leer la ROM completa");
+			return false;
+		}
+		m_pending_firmware_valid = true;
+		ui_emit_event("STATUS\tROM seleccionada; use Reiniciar AlphaSmart para aplicarla");
+	}
+	else
+	{
+		input.read(reinterpret_cast<char *>(m_pending_dictrom.data()), m_pending_dictrom.size());
+		if (input.gcount() != std::streamsize(m_pending_dictrom.size()))
+		{
+			ui_emit_event("STATUS\tNo se pudo leer la DictROM completa");
+			return false;
+		}
+		m_pending_dictrom_valid = true;
+		ui_emit_event("STATUS\tDictROM seleccionada; use Reiniciar AlphaSmart para aplicarla");
+	}
+	return true;
 }
 
 
@@ -2233,6 +2296,17 @@ void asma2k_state::machine_start()
 {
 	alphasmart_state::machine_start();
 
+	for (unsigned i = 0; i < m_active_firmware.size(); ++i)
+		m_active_firmware[i] = m_firmware->read_rom(i);
+	for (unsigned i = 0; i < m_active_dictrom.size(); ++i)
+		m_active_dictrom[i] = m_dictrom->read_rom(i);
+
+	save_item(NAME(m_active_firmware));
+	save_item(NAME(m_active_dictrom));
+	save_item(NAME(m_pending_firmware));
+	save_item(NAME(m_pending_dictrom));
+	save_item(NAME(m_pending_firmware_valid));
+	save_item(NAME(m_pending_dictrom_valid));
 	save_item(NAME(m_lcd_ctrl));
 	save_item(NAME(m_dict_bank));
 	save_item(NAME(m_printer_frame_active));
@@ -2247,6 +2321,19 @@ void asma2k_state::machine_start()
 
 void asma2k_state::machine_reset()
 {
+	if (m_pending_firmware_valid)
+	{
+		m_active_firmware = m_pending_firmware;
+		m_pending_firmware_valid = false;
+		ui_emit_event("STATUS\tROM aplicada en el reinicio");
+	}
+	if (m_pending_dictrom_valid)
+	{
+		m_active_dictrom = m_pending_dictrom;
+		m_pending_dictrom_valid = false;
+		ui_emit_event("STATUS\tDictROM aplicada en el reinicio");
+	}
+
 	alphasmart_state::machine_reset();
 
 	m_lcd_ctrl = 0;
