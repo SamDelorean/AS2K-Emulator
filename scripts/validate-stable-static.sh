@@ -44,6 +44,7 @@ sh -n "$ROOT/scripts/build-stable-core.sh"
 sh -n "$ROOT/scripts/test-ui-send-runtime.sh"
 sh -n "$ROOT/scripts/test-ui-print-runtime.sh"
 sh -n "$ROOT/scripts/test-ui-ir-runtime.sh"
+sh -n "$ROOT/scripts/test-ui-keyboard-runtime.sh"
 python3 -m py_compile "$ROOT/scripts/patch-mc68hc11-pai.py"
 sh "$ROOT/scripts/validate-ui-static.sh"
 
