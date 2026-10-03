@@ -176,6 +176,22 @@ AS2K UI IR runtime: PASS
 The runtime gate also rejects any TXT/PDF/PCL/PRN artifact in the IR output directory, so
 IR remains visualization-only as required.
 
+## Autonomous GTK SH acceptance attempt — BLOCKED BY HOST ENVIRONMENT
+
+The graphical acceptance is now packaged as `scripts/test-ui-gtk-live.sh` and is designed to
+run autonomously without supervising compilation or execution. It does not rebuild the core.
+
+The first autonomous run exposed a real frontend integration defect: PyGObject could load Gdk
+4 before the GTK3 frontend imported Gdk. The frontend now explicitly pins `Gtk 3.0`,
+`Gdk 3.0` and `GdkPixbuf 2.0`; that defect is fixed in source.
+
+The subsequent autonomous SH run is blocked by the T640 remote-shell environment, not by an
+emulator assertion: the shell can see X11 display `:0` but has no Xauthority permission, and
+`xvfb-run` is not installed. The host also lacks `ffmpeg`; the SH treats that separately as
+an MP4-test blocker so the rest of the GTK checks can still run once a usable display exists.
+
+No compilation was launched for this GTK acceptance gate and no execution was polled.
+
 ## Current stop line
 
 Reduced build/validate, LCD bridge, virtual matrix keys, PC/Send, wired Print→CUPS-PDF and
