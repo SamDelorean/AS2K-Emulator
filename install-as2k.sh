@@ -7,9 +7,31 @@ MAME_REPO=${MAME_REPO:-https://github.com/SamDelorean/mame-as3k.git}
 MAME_BRANCH=${MAME_BRANCH:-as2k-send-publication}
 PREFIX=${AS2K_PREFIX:-/usr/local}
 JOBS=${AS2K_JOBS:-1}
+ASSUME_YES=${AS2K_ASSUME_YES:-0}
 
 say() { printf '\n==> %s\n' "$*"; }
 die() { printf '\nERROR: %s\n' "$*" >&2; exit 1; }
+
+confirm()
+{
+    [ "$ASSUME_YES" = "1" ] && return 0
+    printf '\nSe descargarán dependencias y fuentes, se compilará e instalará AS2K Emulator.\n'
+    printf 'Continuar [s/N]? '
+    IFS= read -r answer
+    case "$answer" in
+        s|S|si|SI|sí|Sí|y|Y|yes|YES) return 0 ;;
+        *) echo "Instalación cancelada."; exit 0 ;;
+    esac
+}
+
+run_sudo()
+{
+    if [ "$ASSUME_YES" = "1" ]; then
+        sudo -n "$@" || die "sudo no está autorizado sin interacción"
+    else
+        sudo "$@"
+    fi
+}
 
 case "$JOBS" in ''|*[!0-9]*|0) die "AS2K_JOBS debe ser un entero mayor que cero" ;; esac
 
@@ -41,27 +63,35 @@ FIRMWARE=$(find_image AS2K_FIRMWARE AS2000_v3.1.4.bin || true)
 DICTROM=$(find_image AS2K_DICTROM dictrom.bin || true)
 
 if [ -z "$FIRMWARE" ]; then
+    [ "$ASSUME_YES" = "1" ] && die "Modo automático: indique AS2K_FIRMWARE o coloque AS2000_v3.1.4.bin junto al SH"
     printf 'Ruta del firmware AS2000: '
     IFS= read -r FIRMWARE
 fi
 [ -f "$FIRMWARE" ] || die "No se encontró el firmware indicado"
 
 if [ -z "$DICTROM" ]; then
+    [ "$ASSUME_YES" = "1" ] && die "Modo automático: indique AS2K_DICTROM o coloque dictrom.bin junto al SH"
     printf 'Ruta de DictROM: '
     IFS= read -r DICTROM
 fi
 [ -f "$DICTROM" ] || die "No se encontró la DictROM indicada"
 
+confirm
+
+if [ "$ASSUME_YES" = "1" ]; then
+    export GIT_TERMINAL_PROMPT=0
+fi
+
 say "Instalando dependencias necesarias"
 if command -v apk >/dev/null 2>&1; then
-    sudo apk add \
+    run_sudo apk add --no-progress \
         git build-base python3 py3-gobject3 gtk+3.0 ffmpeg cups cups-filters \
         sdl2-dev sdl2_ttf-dev fontconfig-dev pulseaudio-dev alsa-lib-dev \
         libxinerama-dev libxi-dev libxrandr-dev libxrender-dev libxext-dev \
         mesa-dev expat-dev
 elif command -v apt-get >/dev/null 2>&1; then
-    sudo apt-get update
-    sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y \
+    run_sudo apt-get update
+    run_sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y \
         git build-essential python3 python3-gi gir1.2-gtk-3.0 ffmpeg cups cups-filters \
         libsdl2-dev libsdl2-ttf-dev libfontconfig-dev libpulse-dev libasound2-dev \
         libxinerama-dev libxi-dev libxrandr-dev libxrender-dev libxext-dev libgl1-mesa-dev
@@ -95,7 +125,7 @@ say "Compilando AS2K localmente (JOBS=$JOBS)"
 sh "$AS2K_SRC/scripts/build-stable-core.sh" "$MAME_SRC" "$JOBS"
 
 say "Instalando aplicación completa"
-sudo sh "$AS2K_SRC/scripts/install-stable.sh" "$AS2K_SRC/out/as2k-bin" "$PREFIX"
+run_sudo sh "$AS2K_SRC/scripts/install-stable.sh" "$AS2K_SRC/out/as2k-bin" "$PREFIX"
 
 say "Configurando firmware y DictROM privados"
 mkdir -p "$CONFIG_DIR"
