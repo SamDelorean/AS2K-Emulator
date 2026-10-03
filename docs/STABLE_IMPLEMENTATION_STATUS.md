@@ -74,24 +74,59 @@ Static gates currently pass:
 - `AS2K UI static validation: PASS`
 - `AS2K stable static installation gate: PASS`
 
+## Send runtime bridge — PASS
+
+The bounded Send gate is closed.
+
+The first smoke failure was not a core/UI defect. That test pressed Send after a fixed delay
+without waiting for the stock v3.1.4 firmware to reach its connected-PC ready state. The
+historical validated regression waits for PC=$80E5 before pressing Send. Repeating the test
+with that same readiness criterion showed no divergence between the legacy Pause/Break
+PC-connected path and the new UI override.
+
+Deterministic comparison on T640:
+
+- legacy PC-connected input + physical matrix Send: captured `abc 123`;
+- UI `PC ON` + `KEY SEND` through the matrix overlay: captured `abc 123`;
+- UI two-Send session before disconnect: captured exactly `abc 123abc 123`;
+- disconnect emitted exactly one `SEND_READY` event pointing at the completed temporary file;
+- no PC frame errors were observed.
+
+The reproducible regression is committed as `scripts/test-ui-send-runtime.sh`. It takes the
+validated reduced core, user-supplied Firmware/DictROM, a private prepared NVRAM seed and the
+expected single-Send text. It performs two Send operations in one PC session and requires the
+concatenated output before reporting PASS. Proprietary ROM/NVRAM data are not stored in Git.
+
+Observed T640 result:
+
+```text
+AS2K UI Send runtime: PASS
+capture: abc 123abc 123
+```
+
+The GTK Save-As dialog itself still requires a live graphical-session acceptance test, but the
+firmware transmission, physical-port decoder, session boundary, completed-capture event and
+exact captured content are now dynamically proven through the new bridge.
+
 ## Current stop line
 
-The reduced core build/link/validate increment is closed. Do not install on the Surface yet:
-the next increment is runtime acceptance of the bridge, beginning with the missing Send
-capture. Printer/CUPS and real IR byte-source integration remain out of scope until that
-runtime bridge gate closes.
+LCD mirror, virtual special-key injection, reduced build/validate and PC/Send core bridge are
+closed. Do not reopen those gates without contrary evidence.
+
+The next isolated implementation gate is **wired Print → host PDF**. IR remains out of scope
+for that increment.
 
 ## Next stable code increment
 
-Closed scope:
+Closed scope for wired printing:
 
-1. determine why the automated PC session reaches `PC connected/disconnected` but does not
-   produce `SEND_READY`;
-2. compare only two paths: the already validated legacy PC-connected input path versus the
-   new UI override path, using the same stock v3.1.4 firmware and the same Send matrix key;
-3. fix only the first demonstrated divergence;
-4. rerun one deterministic Send capture and require the expected text in the completed
-   temporary capture;
-5. stop once Send passes or a new dependency outside this scope is proven.
+1. extract/reuse the already validated wired printer signal path from the existing diagnostic
+   implementation rather than inventing a new firmware shortcut;
+2. expose `Impresora conectada` as the corresponding hardware-visible ready state;
+3. collect one completed wired print job while preserving Print as a normal matrix key;
+4. pass that completed job to one host print/PDF backend and open the GTK Save-As flow only
+   after firmware transmission completes;
+5. require one short stock-v3.1.4 print job to produce a valid PDF, then STOP.
 
-Do not open CUPS, IR, payload loading or Surface installation work inside this gate.
+Do not add IR, payload execution, broader printer emulation or Surface installation inside
+this gate.
