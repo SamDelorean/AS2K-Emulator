@@ -23,28 +23,43 @@ MAME_TREE=$(CDPATH= cd -- "$MAME_TREE" && pwd)
 
 DRIVER_SRC="$REPO_DIR/src/mame/skeleton/alphasma.cpp"
 DRIVER_DST="$MAME_TREE/src/mame/skeleton/alphasma.cpp"
+HC11_CPP="$MAME_TREE/src/devices/cpu/mc68hc11/mc68hc11.cpp"
+HC11_H="$MAME_TREE/src/devices/cpu/mc68hc11/mc68hc11.h"
+HC11_PAI_PATCH="$REPO_DIR/patches/mc68hc11-pai.patch"
 MAME_LST="$MAME_TREE/src/mame/mame.lst"
 OUT_DIR="$REPO_DIR/out"
 OUT_BIN="$OUT_DIR/as2k-bin"
 
 [ -f "$DRIVER_SRC" ] || { echo "Missing reduced AS2K driver: $DRIVER_SRC" >&2; exit 2; }
 [ -f "$DRIVER_DST" ] || { echo "Not a compatible MAME tree: $DRIVER_DST missing" >&2; exit 2; }
+[ -f "$HC11_CPP" ] || { echo "Not a compatible MAME tree: $HC11_CPP missing" >&2; exit 2; }
+[ -f "$HC11_H" ] || { echo "Not a compatible MAME tree: $HC11_H missing" >&2; exit 2; }
+[ -f "$HC11_PAI_PATCH" ] || { echo "Missing recovered HC11 PAI patch: $HC11_PAI_PATCH" >&2; exit 2; }
 [ -f "$MAME_LST" ] || { echo "Not a compatible MAME tree: $MAME_LST missing" >&2; exit 2; }
 [ -f "$MAME_TREE/makefile" ] || { echo "Not a compatible MAME tree: makefile missing" >&2; exit 2; }
 
 TMP_DIR=$(mktemp -d)
 cp "$DRIVER_DST" "$TMP_DIR/alphasma.cpp"
+cp "$HC11_CPP" "$TMP_DIR/mc68hc11.cpp"
+cp "$HC11_H" "$TMP_DIR/mc68hc11.h"
 cp "$MAME_LST" "$TMP_DIR/mame.lst"
 
 restore()
 {
     cp "$TMP_DIR/alphasma.cpp" "$DRIVER_DST"
+    cp "$TMP_DIR/mc68hc11.cpp" "$HC11_CPP"
+    cp "$TMP_DIR/mc68hc11.h" "$HC11_H"
     cp "$TMP_DIR/mame.lst" "$MAME_LST"
     rm -rf "$TMP_DIR"
 }
 trap restore EXIT HUP INT TERM
 
 cp "$DRIVER_SRC" "$DRIVER_DST"
+
+# Recover only the already-validated HC11 PA7/PAI pulse-accumulator support
+# needed by the AS2000 IrDA peer.  The donor CPU sources are restored on exit.
+cd "$MAME_TREE"
+patch --batch --forward -p1 < "$HC11_PAI_PATCH"
 
 # MAME's global mame.lst still associates skeleton/alphasma.cpp with AlphaSmart
 # Pro. The reduced driver intentionally omits that machine. Remove only that
