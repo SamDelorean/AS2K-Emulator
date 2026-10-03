@@ -354,6 +354,9 @@ class AS2KWindow(Gtk.ApplicationWindow):
                 self.send_capture[:] = data
                 self._save_send_capture()
             return
+        if kind == "PRINT_READY" and len(parts) >= 2:
+            self._save_print_capture(Path(parts[1]))
+            return
         if kind == "IR_BYTES" and len(parts) >= 3:
             try:
                 data = bytes.fromhex(parts[2])
@@ -437,6 +440,8 @@ class AS2KWindow(Gtk.ApplicationWindow):
 
     def _toggle_pc(self, item: Gtk.CheckMenuItem) -> None:
         self.pc_connected = item.get_active()
+        if self.pc_connected and self.printer_connected:
+            self.printer_item.set_active(False)
         self._send_control(f"PC {'ON' if self.pc_connected else 'OFF'}")
         self._update_header()
         # A completed capture is published asynchronously by the core as
@@ -444,6 +449,8 @@ class AS2KWindow(Gtk.ApplicationWindow):
 
     def _toggle_printer(self, item: Gtk.CheckMenuItem) -> None:
         self.printer_connected = item.get_active()
+        if self.printer_connected and self.pc_connected:
+            self.pc_item.set_active(False)
         self._send_control(f"PRINTER {'ON' if self.printer_connected else 'OFF'}")
         self._update_header()
 
@@ -641,6 +648,38 @@ class AS2KWindow(Gtk.ApplicationWindow):
             if self.video_tmp and self.video_tmp.exists():
                 self.video_tmp.unlink(missing_ok=True)
             self.video_tmp = None
+
+    def _save_print_capture(self, raw_path: Path) -> None:
+        if not raw_path.is_file():
+            self._error("No se pudo leer el trabajo de impresión", str(raw_path))
+            return
+
+        path = self._save_dialog("Guardar impresión", "alphasmart-print.pdf")
+        if not path:
+            raw_path.unlink(missing_ok=True)
+            self.status.set_text("Impresión descartada")
+            return
+        if path.suffix.lower() != ".pdf":
+            path = path.with_suffix(".pdf")
+
+        helper = Path(__file__).with_name("as2k_pcl_to_pdf.py")
+        try:
+            result = subprocess.run(
+                [sys.executable, str(helper), str(raw_path), str(path)],
+                capture_output=True, text=True, timeout=25, check=False,
+            )
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            self._error("No se pudo convertir la impresión a PDF", str(exc))
+            return
+
+        if result.returncode:
+            detail = (result.stderr or result.stdout or "Conversión CUPS rechazada").strip()
+            self._error("No se pudo convertir la impresión a PDF", detail[-1600:])
+            self.status.set_text(f"PCL conservado para diagnóstico: {raw_path}")
+            return
+
+        raw_path.unlink(missing_ok=True)
+        self.status.set_text(f"PDF guardado: {path}")
 
     def _save_send_capture(self) -> None:
         path = self._save_dialog("Guardar captura Send", "alphasmart-send.txt")
