@@ -216,11 +216,10 @@ run_harness()
 if printenv DISPLAY >/dev/null 2>&1 && [ -n "$(printenv DISPLAY)" ]; then
     say "Display backend: existing DISPLAY=$(printenv DISPLAY)"
     run_harness || { cat "$LOG" >>"$REPORT"; fail "graphical test failed"; }
-elif [ -S /tmp/.X11-unix/X0 ]; then
-    say "Display backend: detected local X11 :0"
-    DISPLAY=:0; export DISPLAY
-    run_harness || { cat "$LOG" >>"$REPORT"; fail "graphical test failed"; }
 elif command -v xvfb-run >/dev/null 2>&1; then
+    # Remote shells often see /tmp/.X11-unix/X0 without the interactive
+    # session's Xauthority cookie. Prefer an isolated display that the SH
+    # owns completely; this keeps the test autonomous and non-interactive.
     say "Display backend: xvfb-run"
     XDG_RUNTIME_DIR="$OUT/runtime" \
     AS2K_UI_CONTROL_FILE="$OUT/runtime/control.queue" \
@@ -231,6 +230,13 @@ elif command -v xvfb-run >/dev/null 2>&1; then
             cat "$LOG" >>"$REPORT"
             fail "graphical xvfb test failed"
         }
+elif [ -S /tmp/.X11-unix/X0 ]; then
+    say "Display backend: local X11 :0 fallback"
+    DISPLAY=:0; export DISPLAY
+    run_harness || {
+        cat "$LOG" >>"$REPORT"
+        fail "local X11 exists but remote shell is not authorized; xvfb-run unavailable"
+    }
 else
     fail "no graphical display and xvfb-run unavailable"
 fi
