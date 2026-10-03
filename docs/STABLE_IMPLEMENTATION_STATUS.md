@@ -39,14 +39,35 @@ This table distinguishes source prepared statically from behavior proven by nati
 
 ## Validation performed on T640
 
-The feature driver was copied temporarily into the full `mame-as2k` donor tree under a
-restore-on-exit shell guard and compiled with warnings treated as errors. The modified
-`alphasma.cpp` compiled successfully and `libmame_as2kdiag.a` was produced.
+The reduced-core build closure is now **PASS**.
 
-The subsequent full link did not complete because the donor build attempted to link the Qt
-debugger archive without its Qt symbols, producing unresolved `QWidget`, `QObject` and related
-references. This is a build/link configuration blocker outside the AS2K driver source; it does
-not count as a successful emulator build and must be removed from the reduced stable closure.
+A reproducible builder is committed as `scripts/build-stable-core.sh`. It stages the reduced
+driver into a donor MAME tree under a restore-on-exit guard, removes only the stale derived
+Qt-debugger archive/object directories, temporarily removes the obsolete `asmapro` entry from
+the donor `mame.lst` mapping for `skeleton/alphasma.cpp`, builds with `USE_QTDEBUG=0`,
+runs `./as2k -validate`, then copies the validated executable to the ignored
+`out/as2k-bin` path.
+
+T640 result:
+
+- one source file;
+- one driver (`asma2k`);
+- reduced executable linked successfully as `as2k`;
+- `./as2k -validate` returned success;
+- final builder result: `AS2K reduced core build: PASS`;
+- validated artifact: `out/as2k-bin`.
+
+The earlier Qt failure was confirmed to be stale `libqtdbg_sdl.a` reuse after changing
+`USE_QTDEBUG`; the builder now invalidates only those derived debugger artifacts. The
+subsequent `driver_asmapro` link failure was caused by MAME's global list still associating
+the donor source file with AlphaSmart Pro; the temporary list filter closes that mismatch
+without modifying the donor tree permanently.
+
+A first runtime bridge smoke was also executed after the build closure. The 240x36 LCD mirror
+was produced at exactly 8640 bytes, and the virtual `Find` command changed the framebuffer,
+so the screen path and special-key matrix path are both live. `PC ON` and `PC OFF` reached
+the core event stream. The same smoke did **not** yet produce `SEND_READY`; that is the next
+bounded runtime issue and is not being counted as a Send PASS.
 
 Static gates currently pass:
 
@@ -55,17 +76,22 @@ Static gates currently pass:
 
 ## Current stop line
 
-Do not install this branch on the Surface as the stable emulator yet. The UI and first core/UI
-bridge increment now exist, but the reduced binary must link independently, then pass runtime
-tests for LCD mirroring, virtual matrix keys and PC Send before installation is promoted.
+The reduced core build/link/validate increment is closed. Do not install on the Surface yet:
+the next increment is runtime acceptance of the bridge, beginning with the missing Send
+capture. Printer/CUPS and real IR byte-source integration remain out of scope until that
+runtime bridge gate closes.
 
 ## Next stable code increment
 
-Keep scope closed:
+Closed scope:
 
-1. finish the reduced dependency/build closure without the unwanted Qt debugger linkage;
-2. build and run the standalone core/UI pair;
-3. validate LCD mirror, special-key matrix injection and PC Send Save-As behavior;
-4. only after those pass, integrate wired Print/CUPS-PDF as the next isolated increment;
-5. IR transport byte-source integration remains separate and must use the real emulated path,
-   not a fabricated firmware shortcut.
+1. determine why the automated PC session reaches `PC connected/disconnected` but does not
+   produce `SEND_READY`;
+2. compare only two paths: the already validated legacy PC-connected input path versus the
+   new UI override path, using the same stock v3.1.4 firmware and the same Send matrix key;
+3. fix only the first demonstrated divergence;
+4. rerun one deterministic Send capture and require the expected text in the completed
+   temporary capture;
+5. stop once Send passes or a new dependency outside this scope is proven.
+
+Do not open CUPS, IR, payload loading or Surface installation work inside this gate.
