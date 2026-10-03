@@ -28,6 +28,7 @@
 #include <array>
 #include <cstdlib>
 #include <fstream>
+#include <iterator>
 #include <sstream>
 #include <string_view>
 
@@ -804,11 +805,11 @@ void asma2k_state::ui_emit_event(std::string const &line)
 	std::ofstream output(m_ui_event_path, std::ios::out | std::ios::app);
 	if (!output)
 	{
-		logerror("AS2K_UI EVENT_OPEN_FAILED path=%s\\n", m_ui_event_path);
+		logerror("AS2K_UI EVENT_OPEN_FAILED path=%s\n", m_ui_event_path);
 		return;
 	}
 
-	output << line << '\\n';
+	output << line << '\n';
 	output.flush();
 }
 
@@ -827,7 +828,7 @@ void asma2k_state::ui_bridge_init()
 	{
 		m_ui_bridge_timer = timer_alloc(FUNC(asma2k_state::ui_bridge_tick), this);
 		m_ui_bridge_timer->adjust(attotime::from_msec(10), 0, attotime::from_msec(10));
-		ui_emit_event("STATUS\\tAS2K core/UI bridge ready");
+		ui_emit_event("STATUS\tAS2K core/UI bridge ready");
 	}
 }
 
@@ -875,7 +876,7 @@ void asma2k_state::ui_bridge_poll()
 	std::string line;
 	while (std::getline(lines, line))
 	{
-		if (!line.empty() && line.back() == '\\r')
+		if (!line.empty() && line.back() == '\r')
 			line.pop_back();
 		if (!line.empty())
 			ui_process_command(line);
@@ -940,7 +941,7 @@ void asma2k_state::ui_process_command(std::string const &line)
 	{
 		std::string_view const key(line.data() + 4, line.size() - 4);
 		if (!ui_press_key(key))
-			ui_emit_event("STATUS\\tUnsupported virtual key: " + std::string(key));
+			ui_emit_event("STATUS\tUnsupported virtual key: " + std::string(key));
 		return;
 	}
 
@@ -957,14 +958,14 @@ void asma2k_state::ui_process_command(std::string const &line)
 			pc_keyboard_reset();
 			send_sink_end();
 		}
-		ui_emit_event(std::string("STATUS\\tPC ") + (connected ? "connected" : "disconnected"));
+		ui_emit_event(std::string("STATUS\tPC ") + (connected ? "connected" : "disconnected"));
 		return;
 	}
 
 	if (line == "PRINTER ON" || line == "PRINTER OFF")
 	{
 		m_ui_printer_connected = line == "PRINTER ON";
-		ui_emit_event(std::string("STATUS\\tPrinter ") + (m_ui_printer_connected ? "enabled" : "disabled") +
+		ui_emit_event(std::string("STATUS\tPrinter ") + (m_ui_printer_connected ? "enabled" : "disabled") +
 			" (transport integration pending)");
 		return;
 	}
@@ -972,7 +973,7 @@ void asma2k_state::ui_process_command(std::string const &line)
 	if (line == "IR ON" || line == "IR OFF")
 	{
 		m_ui_ir_enabled = line == "IR ON";
-		ui_emit_event(std::string("STATUS\\tIR ") + (m_ui_ir_enabled ? "enabled" : "disabled") +
+		ui_emit_event(std::string("STATUS\tIR ") + (m_ui_ir_enabled ? "enabled" : "disabled") +
 			" (byte source integration pending)");
 		return;
 	}
@@ -980,24 +981,24 @@ void asma2k_state::ui_process_command(std::string const &line)
 	if (line == "MACHINE RESET")
 	{
 		machine().schedule_soft_reset();
-		ui_emit_event("STATUS\\tSoft reset requested");
+		ui_emit_event("STATUS\tSoft reset requested");
 		return;
 	}
 
 	if (line == "KEY POWER" || line == "MACHINE POWER")
 	{
-		ui_emit_event("STATUS\\tPower-key emulation pending hardware contract");
+		ui_emit_event("STATUS\tPower-key emulation pending hardware contract");
 		return;
 	}
 
 	if (line.rfind("FIRMWARE ", 0) == 0 || line.rfind("DICTROM ", 0) == 0 ||
 		line.rfind("PAYLOAD ", 0) == 0 || line.rfind("PAYLOAD_FILE ", 0) == 0)
 	{
-		ui_emit_event("STATUS\\tImage/payload selection recorded by UI; restart/load bridge pending");
+		ui_emit_event("STATUS\tImage/payload selection recorded by UI; restart/load bridge pending");
 		return;
 	}
 
-	ui_emit_event("STATUS\\tUnknown UI command: " + line);
+	ui_emit_event("STATUS\tUnknown UI command: " + line);
 }
 
 void asma2k_state::ui_write_frame(bitmap_ind16 const &bitmap)
