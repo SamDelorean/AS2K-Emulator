@@ -1,0 +1,160 @@
+AS2K Emulator — Atajos conocidos de AlphaSmart 2000
+=========================================================
+
+Convenciones
+------------
+Command = tecla Command (⌘ / x en el manual original)
+Option  = tecla Option/Alt
+Ctrl    = Control
+
+A. Confirmados en el manual AlphaSmart 2000 (revisión mayo de 1999)
+-------------------------------------------------------------------
+Option + Command + Clear File
+  Borrado permanente del archivo actual.
+
+Option + Command + Ctrl + Shift + Clear File
+  Borra los ocho archivos.
+
+Command + Delete
+  Borra desde el cursor hasta el final del archivo.
+
+Command + F   o   Find
+  Buscar texto.
+
+Command + Find
+  Temporizador de mecanografía (Keyboarding Timer).
+
+Command + F1 ... F8
+  Cambia al archivo 1 ... 8 cuando el AlphaSmart está conectado a PC.
+
+Option + Command + F1 ... F8
+  Cambia al archivo 1 ... 8 cuando está conectado a Macintosh.
+
+Command + G
+  Continúa la búsqueda desde la pantalla Find.
+
+Option + Command + K
+  Menú de Sticky Keys, Auto Repeat y Show Marks.
+
+Option + Command + L
+  Selección de distribución QWERTY / Dvorak / mano derecha / mano izquierda.
+
+Command + P   o   Print
+  Imprime el archivo actual.
+
+Option + Print
+  Menú de selección/configuración de impresora.
+
+Option + Command + P
+  Cambiar contraseña del archivo.
+
+Ctrl + Option + Command + P
+  Habilitar/deshabilitar protección por contraseña.
+
+Option + Command + S
+  Menú de velocidad de transferencia.
+
+Command + Spell Check
+  Revisión ortográfica de una palabra.
+
+Option + Command + Spell Check
+  Habilita/deshabilita Spell Check.
+
+Option + Command + R
+  Recupera el archivo después del último borrado normal.
+
+Ctrl + Option + Command + R
+  Recuperación incremental de 40 caracteres.
+
+Shift + Ctrl + Option + Command + R
+  Recupera el archivo completo.
+
+Option + Command + V
+  Pantalla de estado del sistema (versión, archivo actual y estados).
+
+B. Cuando AlphaSmart 2000 está conectado a una PC
+--------------------------------------------------
+Print                    -> PrtScrn
+Shift + Print            -> Pause
+Spell Check              -> Scroll Lock
+Shift + Spell Check      -> Num Lock
+Find                     -> Delete
+Shift + Find             -> Insert
+Command + Print          -> F9
+Command + Spell Check    -> F10
+Command + Find           -> F11
+Command + Clear File     -> F12
+
+Send conserva su función propia de transferencia; no se convierte en una tecla PC normal.
+
+C. Caracteres internacionales/especiales confirmados en el manual AS2000
+-------------------------------------------------------------------------
+Option + A               -> á
+Option + E               -> é
+Option + I               -> í
+Option + O               -> ó
+Option + U               -> ú
+Option + Shift + A       -> Á
+Option + Shift + E       -> É
+Option + Shift + O       -> Ó
+Option + Shift + U       -> Ú
+
+Ctrl + A/E/I/O/U         -> à / è / ì / ò / ù
+Ctrl + Shift + A/E/O/U   -> À / È / Ò / Ù
+Ctrl + Option + A/E/I/O/U -> â / ê / î / ô / û
+
+Option + Command + A/E/I/O/U
+  -> ä / ë / ï / ö / ü
+
+Option + ?               -> ¿
+Option + !               -> ¡
+Ctrl + 2                 -> å
+Shift + Ctrl + 2         -> Å
+Option + 0               -> º
+Option + Shift + 1       -> 1/2
+Option + 2               -> ™
+Option + 3               -> £
+Option + 4               -> ¢
+Option + 6               -> ¨
+Option + Shift + 7       -> ¤
+Option + 8               -> •
+Option + 9               -> ª
+Option + "               -> æ
+Option + Shift + "       -> Æ
+Option + B               -> ß
+Option + C               -> ç
+Option + Shift + C       -> Ç
+Option + D               -> °
+Option + G               -> ©
+Option + N               -> ñ
+Option + Shift + N       -> Ñ
+Option + M               -> µ
+Option + P               -> ¶
+Option + R               -> ®
+Option + S               -> §
+Option + Q               -> œ
+Option + Shift + Q       -> Œ
+Option + Y               -> ¥
+Ctrl + /                 -> ø
+Ctrl + Shift + /         -> Ø
+
+El manual marca como no soportados: Â, Î, Ï, Ì e Í.
+
+D. Referencia adicional ya existente en el proyecto
+---------------------------------------------------
+La hoja/nota "Atajos de teclado para Alphasmart" del proyecto contiene además:
+Command+H (Ayuda), Command+O (Abrir), Shift+Ctrl+B (Batería),
+Command+D (Borrar archivo), Ctrl+Find o Command+F (Buscar/Reemplazar),
+Command+G (Buscar de nuevo), Ctrl+W (Contar palabras), Command+I
+(Almacenamiento), Command+P (Imprimir), Command+A (Seleccionar todo)
+y Command+S (Secciones), además de una tabla de caracteres especiales.
+
+Estas entradas se conservan como referencia del proyecto, pero NO se marcan aquí
+como confirmadas para el firmware AlphaSmart 2000 v3.1.4 porque la fuente adjunta
+no identifica de forma inequívoca el modelo/versión y algunas combinaciones difieren
+del manual original de AlphaSmart 2000.
+
+Fuentes de esta página
+----------------------
+- Intelligent Peripheral Devices, AlphaSmart 2000 User Manual, rev. mayo 1999.
+- Nota de proyecto adjunta: "Atajos de teclado para Alphasmart".
