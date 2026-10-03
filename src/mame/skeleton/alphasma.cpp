@@ -27,6 +27,7 @@
 
 #include <array>
 #include <cstdlib>
+#include <cstdio>
 #include <fstream>
 #include <iterator>
 #include <sstream>
@@ -138,6 +139,9 @@ private:
 	void send_sink_codepoint(char32_t codepoint);
 	void send_sink_end();
 	bool pc_connected();
+	TIMER_CALLBACK_MEMBER(printer_frame_done);
+	void printer_capture_byte(uint8_t byte);
+	void printer_capture_end(bool complete);
 	void ui_bridge_init();
 	void ui_bridge_poll();
 	void ui_process_command(std::string const &line);
@@ -179,6 +183,18 @@ private:
 	bool m_send_sink_had_data = false;
 	uint64_t m_send_session_serial = 0;
 	std::unique_ptr<emu_file> m_send_sink;
+
+	emu_timer *m_printer_frame_timer = nullptr;
+	bool m_printer_frame_active = false;
+	uint8_t m_printer_edge_count = 0;
+	uint64_t m_printer_start_tick = 0;
+	std::array<uint64_t, 32> m_printer_edge_ticks{};
+	std::array<uint8_t, 32> m_printer_edge_levels{};
+	unsigned m_printer_capture_bytes = 0;
+	uint64_t m_printer_session_serial = 0;
+	std::array<uint8_t, 7> m_printer_tail{};
+	uint8_t m_printer_tail_count = 0;
+	std::unique_ptr<emu_file> m_printer_capture;
 
 	bool m_ui_pc_override = false;
 	bool m_ui_pc_connected = false;
@@ -293,8 +309,16 @@ void asma2k_state::lcd_ctrl_w(uint8_t data)
 uint8_t asma2k_state::asma2k_port_a_r()
 {
 	uint8_t data = (m_port_a & 0xfd) | (m_battery_status->read() << 1);
-	if (pc_connected())
-		data |= 0x05; // PC attached: PA2 asserted, PA0 idle high
+
+	// Wired printer and PC keyboard share the same physical host-side path in
+	// the validated AS2000 model.  Clear the host-sense bits first, then expose
+	// exactly one hardware condition.  The GTK front-end also prevents the two
+	// attachment toggles from remaining active simultaneously.
+	data &= ~uint8_t(0x05);
+	if (m_ui_printer_connected)
+		data |= 0x01; // Wired printer ready: PA0 high.
+	else if (pc_connected())
+		data |= 0x05; // PC keyboard: PA2 and idle PA0 high.
 	return data;
 }
 
@@ -486,11 +510,154 @@ void asma2k_state::pc_clock_rising(bool data)
 
 void asma2k_state::asma2k_port_d_w(uint8_t data)
 {
-	// The wired PC keyboard interface uses PD0 as clock and inverted PD1 as data.
-	if (pc_connected() && !BIT(m_port_d, 0) && BIT(data, 0))
-		pc_clock_rising(!BIT(data, 1));
+	bool const before = BIT(m_port_d, 0);
+	bool const after = BIT(data, 0);
+
+	// Printer capture reuses the previously validated physical PD0 waveform
+	// decoder.  No firmware PC/routine hook is involved.
+	if (m_ui_printer_connected && before != after)
+	{
+		uint64_t const tick = machine().time().as_ticks(2'000'000);
+		if (!m_printer_frame_active && !before && after)
+		{
+			m_printer_frame_active = true;
+			m_printer_start_tick = tick;
+			m_printer_edge_count = 0;
+			m_printer_frame_timer->adjust(attotime::from_ticks(330, 2'000'000));
+		}
+		if (m_printer_frame_active && m_printer_edge_count < m_printer_edge_ticks.size())
+		{
+			m_printer_edge_ticks[m_printer_edge_count] = tick;
+			m_printer_edge_levels[m_printer_edge_count] = after;
+			++m_printer_edge_count;
+		}
+	}
+	else if (pc_connected() && !before && after)
+	{
+		pc_clock_rising(!BIT(data, 1)); // PC keyboard: PD0 clock, inverted PD1 data.
+	}
 
 	alphasmart_state::port_d_w(data);
+}
+
+TIMER_CALLBACK_MEMBER(asma2k_state::printer_frame_done)
+{
+	if (!m_printer_frame_active)
+		return;
+
+	m_printer_frame_active = false;
+	if (!m_ui_printer_connected || !m_printer_edge_count)
+		return;
+
+	// Physical PD0 is inverted relative to the 8N1 byte.  These sample points
+	// are the timings already established by the wired-printer regression.
+	auto const level_at = [this](uint64_t tick) -> uint8_t
+	{
+		uint8_t level = 1;
+		for (unsigned i = 0; i < m_printer_edge_count; ++i)
+		{
+			if (m_printer_edge_ticks[i] > tick)
+				break;
+			level = m_printer_edge_levels[i];
+		}
+		return level;
+	};
+
+	if (level_at(m_printer_start_tick + 328) != 0)
+		return;
+
+	uint8_t byte = 0;
+	for (unsigned bit = 0; bit < 8; ++bit)
+		byte |= !level_at(m_printer_start_tick + 48 + bit * 35) << bit;
+
+	printer_capture_byte(byte);
+}
+
+void asma2k_state::printer_capture_byte(uint8_t byte)
+{
+	static constexpr unsigned max_job_bytes = 200'000;
+	static constexpr std::array<uint8_t, 7> pcl_end =
+		{ 0x1b, '&', 'l', '0', 'H', 0x1b, 'E' };
+
+	if (!m_printer_capture)
+	{
+		std::string const output_directory(machine().options().snapshot_directory());
+		std::string const filename =
+			".as2k-print-pending-" + std::to_string(++m_printer_session_serial) + ".pcl";
+
+		m_printer_capture = std::make_unique<emu_file>(
+			output_directory,
+			OPEN_FLAG_WRITE | OPEN_FLAG_CREATE | OPEN_FLAG_CREATE_PATHS);
+
+		std::error_condition const err = m_printer_capture->open(filename);
+		if (err)
+		{
+			logerror("AS2K_PRINT CAPTURE_OPEN_FAILED path=%s%s%s error=%s\n",
+				output_directory, PATH_SEPARATOR, filename, err.message());
+			m_printer_capture.reset();
+			return;
+		}
+
+		m_printer_capture_bytes = 0;
+		m_printer_tail_count = 0;
+	}
+
+	if (m_printer_capture_bytes >= max_job_bytes)
+	{
+		ui_emit_event("STATUS\tPrinter job rejected: capture exceeds 200000 bytes");
+		printer_capture_end(false);
+		return;
+	}
+
+	m_printer_capture->write(&byte, 1);
+	++m_printer_capture_bytes;
+
+	if (m_printer_tail_count < m_printer_tail.size())
+	{
+		m_printer_tail[m_printer_tail_count++] = byte;
+	}
+	else
+	{
+		for (unsigned i = 1; i < m_printer_tail.size(); ++i)
+			m_printer_tail[i - 1] = m_printer_tail[i];
+		m_printer_tail.back() = byte;
+	}
+
+	bool complete = m_printer_tail_count == pcl_end.size();
+	for (unsigned i = 0; complete && i < pcl_end.size(); ++i)
+		complete = m_printer_tail[i] == pcl_end[i];
+
+	if (complete)
+		printer_capture_end(true);
+}
+
+void asma2k_state::printer_capture_end(bool complete)
+{
+	std::string completed_path;
+	if (m_printer_capture)
+	{
+		completed_path = m_printer_capture->fullpath();
+		m_printer_capture->flush();
+		m_printer_capture->close();
+		m_printer_capture.reset();
+	}
+
+	unsigned const bytes = m_printer_capture_bytes;
+	m_printer_capture_bytes = 0;
+	m_printer_tail_count = 0;
+
+	if (completed_path.empty())
+		return;
+
+	if (complete && bytes)
+	{
+		logerror("AS2K_PRINT JOB_COMPLETE bytes=%u path=%s\n", bytes, completed_path);
+		ui_emit_event("PRINT_READY\t" + completed_path);
+	}
+	else
+	{
+		std::remove(completed_path.c_str());
+	}
 }
 
 void asma2k_state::send_sink_begin()
@@ -964,9 +1131,15 @@ void asma2k_state::ui_process_command(std::string const &line)
 
 	if (line == "PRINTER ON" || line == "PRINTER OFF")
 	{
-		m_ui_printer_connected = line == "PRINTER ON";
-		ui_emit_event(std::string("STATUS\tPrinter ") + (m_ui_printer_connected ? "enabled" : "disabled") +
-			" (transport integration pending)");
+		bool const connected = line == "PRINTER ON";
+		if (!connected)
+		{
+			m_printer_frame_active = false;
+			m_printer_frame_timer->adjust(attotime::never);
+			printer_capture_end(false);
+		}
+		m_ui_printer_connected = connected;
+		ui_emit_event(std::string("STATUS\tPrinter ") + (connected ? "connected" : "disconnected"));
 		return;
 	}
 
@@ -1345,6 +1518,12 @@ void asma2k_state::machine_start()
 
 	save_item(NAME(m_lcd_ctrl));
 	save_item(NAME(m_dict_bank));
+	save_item(NAME(m_printer_frame_active));
+	save_item(NAME(m_printer_edge_count));
+	save_item(NAME(m_printer_start_tick));
+	save_item(NAME(m_printer_edge_ticks));
+	save_item(NAME(m_printer_edge_levels));
+	m_printer_frame_timer = timer_alloc(FUNC(asma2k_state::printer_frame_done), this);
 	ui_bridge_init();
 }
 
@@ -1355,6 +1534,10 @@ void asma2k_state::machine_reset()
 	m_lcd_ctrl = 0;
 	m_dict_bank = 0;
 	m_io_view.select(0);
+	m_printer_frame_active = false;
+	if (m_printer_frame_timer)
+		m_printer_frame_timer->adjust(attotime::never);
+	printer_capture_end(false);
 
 	if (BIT(m_boot_mode->read(), 0))
 		apply_direct_dictrom_bootstrap();
