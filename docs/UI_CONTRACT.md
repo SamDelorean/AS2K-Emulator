@@ -42,10 +42,14 @@ The final application must not expose the generic MAME UI as its normal human-fa
 
 ### Archivo
 
-Stable functions include image selection, screenshot, video recording and exit. The private
-working configuration additionally exposes payload selection for STOCK, Payload-0, Payload-1,
-Payload-1b, Payload-2 and an external payload file. Selecting a payload affects the next
-boot/reset; it is not a hot arbitrary PC jump.
+Stable functions include image selection, screenshot, video recording and exit. Selecting a
+Firmware ROM or DictROM only stages that image; it does not hot-swap the running machine. The
+user applies the selected image explicitly with `Máquina → Reiniciar AlphaSmart`. Firmware
+and DictROM may be selected independently before the same reset.
+
+The private working configuration additionally exposes payload selection for STOCK, Payload-0,
+Payload-1, Payload-1b, Payload-2 and an external payload file. Selecting a payload affects the
+next boot/reset; it is not a hot arbitrary PC jump.
 
 ### Máquina
 
