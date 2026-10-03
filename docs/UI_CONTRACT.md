@@ -107,6 +107,14 @@ does not alter the logical recording source.
 If the application is closed during recording, it must offer save/discard/cancel rather than
 silently losing the capture.
 
+## Ayuda y atajos
+
+`Ayuda → Atajos de teclado…` abre una página de texto local, desplazable y de solo lectura.
+La sección principal contiene únicamente combinaciones respaldadas por el manual original
+AlphaSmart 2000. Las combinaciones procedentes de notas internas del proyecto que todavía no
+están confirmadas específicamente para AS2000 se conservan en una sección aparte y se
+identifican explícitamente como referencia no confirmada.
+
 ## Stable vs Workbench
 
 The public/stable application does not need payload-development controls. The same front-end
