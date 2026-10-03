@@ -32,6 +32,7 @@
 #include <iterator>
 #include <sstream>
 #include <string_view>
+#include <vector>
 
 
 namespace {
@@ -142,6 +143,26 @@ private:
 	TIMER_CALLBACK_MEMBER(printer_frame_done);
 	void printer_capture_byte(uint8_t byte);
 	void printer_capture_end(bool complete);
+	uint8_t cpu_state8(char const *symbol) const;
+	void ir_instruction_w(uint16_t pc);
+	void ir_tx_byte_w(uint8_t data);
+	void ir_event_w(uint8_t event);
+	void ir_capture_begin(char const *kind);
+	void ir_capture_end(bool complete);
+	void ir_ui_flush();
+	void ir_frame_byte(uint8_t data);
+	void ir_peer_begin();
+	void ir_peer_stop();
+	void ir_peer_send_xid();
+	void ir_peer_send_xid_response();
+	void ir_peer_send_snrm();
+	void ir_peer_send_ua();
+	void ir_peer_send_rr(uint8_t nr, bool final_bit);
+	void ir_peer_send_i(std::vector<uint8_t> const &info);
+	void ir_peer_send_frame(std::vector<uint8_t> const &body);
+	void ir_peer_on_tx_frame(std::vector<uint8_t> const &frame);
+	void ir_peer_drive(bool high);
+	TIMER_CALLBACK_MEMBER(ir_peer_timer);
 	void ui_bridge_init();
 	void ui_bridge_poll();
 	void ui_process_command(std::string const &line);
@@ -195,6 +216,41 @@ private:
 	std::array<uint8_t, 7> m_printer_tail{};
 	uint8_t m_printer_tail_count = 0;
 	std::unique_ptr<emu_file> m_printer_capture;
+
+	bool m_ir_capture_active = false;
+	bool m_ir_frame_active = false;
+	bool m_ir_escape = false;
+	uint32_t m_ir_session_bytes = 0;
+	uint32_t m_ir_frame_count = 0;
+	std::string m_ir_session_kind;
+	std::vector<uint8_t> m_ir_frame;
+	std::array<uint8_t, 16> m_ir_ui_batch{};
+	uint8_t m_ir_ui_batch_count = 0;
+
+	// Recovered virtual IrDA peer.  This is the already-validated PA7/PAI
+	// optical peer, retained without the old diagnostic TXT/PDF file sinks.
+	emu_timer *m_ir_peer_timer = nullptr;
+	std::vector<uint8_t> m_ir_peer_raw;
+	size_t m_ir_peer_byte = 0;
+	uint8_t m_ir_peer_bit = 0;
+	bool m_ir_peer_pulse_end = false;
+	bool m_ir_peer_active = false;
+	bool m_ir_peer_level = true;
+	bool m_ir_peer_send_session = false;
+	bool m_ir_peer_print_session = false;
+	bool m_ir_peer_primary = true;
+	bool m_ir_peer_print_discovery_replied = false;
+	bool m_ir_peer_file_receive = false;
+	uint32_t m_ir_peer_text_bytes = 0;
+	uint32_t m_ir_print_bytes = 0;
+	bool m_ir_print_complete = false;
+	uint8_t m_ir_peer_stage = 0;
+	uint8_t m_ir_peer_xid_slot = 0;
+	uint8_t m_ir_peer_pending = 0;
+	uint8_t m_ir_peer_nr = 0;
+	uint8_t m_ir_peer_ns = 0;
+	uint8_t m_ir_peer_connection_address = 0x02;
+	uint32_t m_ir_peer_target = 0;
 
 	bool m_ui_pc_override = false;
 	bool m_ui_pc_connected = false;
@@ -319,6 +375,12 @@ uint8_t asma2k_state::asma2k_port_a_r()
 		data |= 0x01; // Wired printer ready: PA0 high.
 	else if (pc_connected())
 		data |= 0x05; // PC keyboard: PA2 and idle PA0 high.
+
+	// PA7 is the IrDA optical receiver / pulse-accumulator input.  Idle is
+	// HIGH.  During an active recovered peer transaction its driven level is
+	// reflected both here and on MC68HC11_PAI_LINE.
+	bool const ir_high = m_ui_ir_enabled && m_ir_peer_active ? m_ir_peer_level : true;
+	data = (data & 0x7f) | (ir_high ? 0x80 : 0x00);
 	return data;
 }
 
@@ -964,6 +1026,626 @@ void asma2k_state::send_sink_end()
 }
 
 
+
+uint8_t asma2k_state::cpu_state8(char const *symbol) const
+{
+	for (auto const &entry : m_maincpu->state_entries())
+		if (!strcmp(entry->symbol(), symbol))
+			return uint8_t(m_maincpu->state_int(entry->index()));
+	return 0;
+}
+
+void asma2k_state::ir_instruction_w(uint16_t pc)
+{
+	if (!m_ui_ir_enabled)
+		return;
+
+	// Recovered byte/session observation points from the validated IrDA work.
+	// They are passive observations of stock v3.1.4 execution.  No firmware
+	// state, RAM, PC or register is modified here.
+	switch (pc)
+	{
+	case 0xd1ef: ir_tx_byte_w(cpu_state8("B")); break; // actual STAB $05BA enqueue
+	case 0xd220: ir_event_w(0x01); break;              // TX drained/frame wait complete
+	case 0xd0d7: ir_event_w(0x30); break;              // IrDA init complete
+	case 0xd2dc: ir_event_w(0x10); break;              // Send IrDA session entry
+	case 0x9719: ir_event_w(0x11); break;              // Send IrDA return
+	case 0xd437: ir_event_w(0x20); break;              // Print IrDA session entry
+	case 0xd47d: ir_event_w(0x21); break;              // Print IrDA return
+	default: break;
+	}
+}
+
+void asma2k_state::ir_ui_flush()
+{
+	if (!m_ir_ui_batch_count || m_ir_session_kind.empty())
+		return;
+
+	static constexpr char hex[] = "0123456789ABCDEF";
+	std::string payload;
+	payload.reserve(size_t(m_ir_ui_batch_count) * 3);
+	for (unsigned i = 0; i < m_ir_ui_batch_count; ++i)
+	{
+		if (i)
+			payload.push_back(' ');
+		uint8_t const value = m_ir_ui_batch[i];
+		payload.push_back(hex[value >> 4]);
+		payload.push_back(hex[value & 0x0f]);
+	}
+
+	ui_emit_event("IR_BYTES\t" + m_ir_session_kind + "\t" + payload);
+	m_ir_ui_batch_count = 0;
+}
+
+void asma2k_state::ir_capture_begin(char const *kind)
+{
+	ir_capture_end(false);
+	m_ir_capture_active = true;
+	m_ir_frame_active = false;
+	m_ir_escape = false;
+	m_ir_session_bytes = 0;
+	m_ir_frame_count = 0;
+	m_ir_frame.clear();
+	m_ir_ui_batch_count = 0;
+	m_ir_session_kind = kind;
+	ui_emit_event("STATUS\tIR " + m_ir_session_kind + " transmission started");
+}
+
+void asma2k_state::ir_capture_end(bool complete)
+{
+	if (!m_ir_capture_active)
+		return;
+
+	ir_ui_flush();
+	if (complete)
+		ui_emit_event("IR_DONE");
+	m_ir_capture_active = false;
+	m_ir_frame_active = false;
+	m_ir_escape = false;
+	m_ir_frame.clear();
+	m_ir_ui_batch_count = 0;
+	m_ir_session_kind.clear();
+}
+
+void asma2k_state::ir_frame_byte(uint8_t data)
+{
+	if (!m_ir_frame_active)
+	{
+		if (data == 0xc0)
+		{
+			m_ir_frame_active = true;
+			m_ir_escape = false;
+			m_ir_frame.clear();
+		}
+		return; // FF preamble/noise before C0 is still displayed by the UI.
+	}
+
+	if (m_ir_escape)
+	{
+		m_ir_frame.push_back(data ^ 0x20);
+		m_ir_escape = false;
+		return;
+	}
+	if (data == 0x7d)
+	{
+		m_ir_escape = true;
+		return;
+	}
+	if (data == 0xc1)
+	{
+		++m_ir_frame_count;
+		ir_peer_on_tx_frame(m_ir_frame);
+		m_ir_frame_active = false;
+		m_ir_escape = false;
+		m_ir_frame.clear();
+		return;
+	}
+	if (data == 0xc0)
+	{
+		m_ir_frame.clear();
+		m_ir_escape = false;
+		return;
+	}
+	m_ir_frame.push_back(data);
+}
+
+void asma2k_state::ir_tx_byte_w(uint8_t data)
+{
+	if (!m_ir_capture_active)
+		return;
+
+	++m_ir_session_bytes;
+	m_ir_ui_batch[m_ir_ui_batch_count++] = data;
+	if (m_ir_ui_batch_count == m_ir_ui_batch.size())
+		ir_ui_flush();
+
+	ir_frame_byte(data);
+}
+
+void asma2k_state::ir_event_w(uint8_t event)
+{
+	switch (event)
+	{
+	case 0x10:
+		m_ir_peer_send_session = true;
+		m_ir_peer_print_session = false;
+		m_ir_peer_primary = true;
+		ir_capture_begin("SEND");
+		break;
+
+	case 0x11:
+		if (m_ir_peer_send_session)
+		{
+			m_ir_peer_send_session = false;
+			ir_peer_stop();
+			ir_capture_end(true);
+		}
+		break;
+
+	case 0x20:
+		m_ir_peer_print_session = true;
+		m_ir_peer_send_session = false;
+		m_ir_peer_primary = false;
+		ir_capture_begin("PRINT");
+		break;
+
+	case 0x21:
+		if (m_ir_peer_print_session)
+		{
+			m_ir_peer_print_session = false;
+			ir_peer_stop();
+			ir_capture_end(true);
+		}
+		break;
+
+	case 0x30:
+		if (m_ir_peer_send_session || m_ir_peer_print_session)
+			ir_peer_begin();
+		break;
+
+	case 0x01:
+		ir_ui_flush();
+		if (m_ir_peer_pending && !m_ir_peer_active)
+			m_ir_peer_timer->adjust(attotime::from_msec(2));
+		break;
+
+	default:
+		break;
+	}
+}
+
+static uint16_t as2k_ir_fcs16(std::vector<uint8_t> const &data)
+{
+	uint16_t fcs = 0xffff;
+	for (uint8_t value : data)
+	{
+		fcs ^= value;
+		for (unsigned bit = 0; bit < 8; ++bit)
+			fcs = (fcs & 1) ? (fcs >> 1) ^ 0x8408 : fcs >> 1;
+	}
+	return fcs;
+}
+
+void asma2k_state::ir_peer_drive(bool high)
+{
+	m_ir_peer_level = high;
+	m_maincpu->set_input_line(MC68HC11_PAI_LINE, high ? ASSERT_LINE : CLEAR_LINE);
+}
+
+void asma2k_state::ir_peer_stop()
+{
+	if (m_ir_peer_timer)
+		m_ir_peer_timer->adjust(attotime::never);
+	m_ir_peer_raw.clear();
+	m_ir_peer_byte = 0;
+	m_ir_peer_bit = 0;
+	m_ir_peer_pulse_end = false;
+	m_ir_peer_active = false;
+	m_ir_peer_pending = 0;
+	m_ir_peer_print_discovery_replied = false;
+	m_ir_peer_file_receive = false;
+	m_ir_print_complete = false;
+	m_ir_peer_text_bytes = 0;
+	m_ir_print_bytes = 0;
+	m_ir_peer_stage = 0;
+	m_ir_peer_xid_slot = 0;
+	m_ir_peer_nr = 0;
+	m_ir_peer_ns = 0;
+	m_ir_peer_connection_address = 0x02;
+	m_ir_peer_target = 0;
+	ir_peer_drive(true);
+}
+
+void asma2k_state::ir_peer_begin()
+{
+	ir_peer_stop();
+	m_ir_peer_stage = 1;
+	m_ir_peer_xid_slot = 0;
+	if (m_ir_peer_primary)
+	{
+		m_ir_peer_pending = 1;
+		m_ir_peer_timer->adjust(attotime::from_msec(2));
+	}
+	// Print is the opposite IrLAP role.  Stock firmware performs discovery;
+	// the peer waits passively for the first XID command.
+}
+
+void asma2k_state::ir_peer_send_frame(std::vector<uint8_t> const &body)
+{
+	if (m_ir_peer_active || body.empty())
+		return;
+
+	std::vector<uint8_t> framed(body);
+	uint16_t const fcs = ~as2k_ir_fcs16(body);
+	framed.push_back(uint8_t(fcs));
+	framed.push_back(uint8_t(fcs >> 8));
+
+	m_ir_peer_raw.assign(4, 0xff);
+	m_ir_peer_raw.push_back(0xc0);
+	for (uint8_t value : framed)
+	{
+		if (value == 0xc0 || value == 0xc1 || value == 0x7d)
+		{
+			m_ir_peer_raw.push_back(0x7d);
+			m_ir_peer_raw.push_back(value ^ 0x20);
+		}
+		else
+			m_ir_peer_raw.push_back(value);
+	}
+	m_ir_peer_raw.push_back(0xc1);
+
+	m_ir_peer_byte = 0;
+	m_ir_peer_bit = 0;
+	m_ir_peer_pulse_end = false;
+	m_ir_peer_active = true;
+	ir_peer_drive(true);
+	m_ir_peer_timer->adjust(attotime::zero);
+}
+
+void asma2k_state::ir_peer_send_xid()
+{
+	static constexpr uint8_t peer_address[4] = { 0x11, 0x22, 0x33, 0x44 };
+	std::vector<uint8_t> body = { 0xff, 0x3f, 0x01 };
+	body.insert(body.end(), std::begin(peer_address), std::end(peer_address));
+	body.insert(body.end(), { 0xff, 0xff, 0xff, 0xff });
+	uint8_t const slot = m_ir_peer_xid_slot;
+	body.push_back(slot == 0 ? 0x05 : 0x01);
+	body.push_back(slot < 6 ? slot : 0xff);
+	body.push_back(0x00);
+	if (slot >= 6)
+	{
+		static constexpr uint8_t info[] =
+			{ 0x82, 0x04, 0x00, 'M', 'A', 'M', 'E', ' ', 'I', 'r', 'D', 'A' };
+		body.insert(body.end(), std::begin(info), std::end(info));
+	}
+	ir_peer_send_frame(body);
+}
+
+void asma2k_state::ir_peer_send_xid_response()
+{
+	if (!m_ir_peer_target)
+		return;
+
+	static constexpr uint8_t peer_address[4] = { 0x11, 0x22, 0x33, 0x44 };
+	std::vector<uint8_t> body = { 0xfe, 0xbf, 0x01 };
+	body.insert(body.end(), std::begin(peer_address), std::end(peer_address));
+	body.push_back(uint8_t(m_ir_peer_target >> 24));
+	body.push_back(uint8_t(m_ir_peer_target >> 16));
+	body.push_back(uint8_t(m_ir_peer_target >> 8));
+	body.push_back(uint8_t(m_ir_peer_target));
+	body.push_back(0x01);
+	body.push_back(m_ir_peer_xid_slot);
+	body.push_back(0x00);
+	static constexpr uint8_t info[] =
+		{ 0x88, 0x00, 0x00, 'M', 'A', 'M', 'E', ' ', 'P', 'r', 'i', 'n', 't', 'e', 'r' };
+	body.insert(body.end(), std::begin(info), std::end(info));
+	ir_peer_send_frame(body);
+}
+
+void asma2k_state::ir_peer_send_snrm()
+{
+	if (!m_ir_peer_target)
+		return;
+
+	static constexpr uint8_t peer_address[4] = { 0x11, 0x22, 0x33, 0x44 };
+	std::vector<uint8_t> body = { 0xff, 0x93 };
+	body.insert(body.end(), std::begin(peer_address), std::end(peer_address));
+	body.push_back(uint8_t(m_ir_peer_target >> 24));
+	body.push_back(uint8_t(m_ir_peer_target >> 16));
+	body.push_back(uint8_t(m_ir_peer_target >> 8));
+	body.push_back(uint8_t(m_ir_peer_target));
+	body.push_back(0x02);
+	static constexpr uint8_t params[] =
+	{
+		0x01,0x01,0x02, 0x82,0x01,0x01, 0x83,0x01,0x01, 0x84,0x01,0x01,
+		0x85,0x01,0x10, 0x86,0x01,0x01, 0x08,0x01,0x01
+	};
+	body.insert(body.end(), std::begin(params), std::end(params));
+	m_ir_peer_stage = 3;
+	ir_peer_send_frame(body);
+}
+
+void asma2k_state::ir_peer_send_ua()
+{
+	if (!m_ir_peer_target)
+		return;
+
+	static constexpr uint8_t peer_address[4] = { 0x11, 0x22, 0x33, 0x44 };
+	std::vector<uint8_t> body = { m_ir_peer_connection_address, 0x73 };
+	body.insert(body.end(), std::begin(peer_address), std::end(peer_address));
+	body.push_back(uint8_t(m_ir_peer_target >> 24));
+	body.push_back(uint8_t(m_ir_peer_target >> 16));
+	body.push_back(uint8_t(m_ir_peer_target >> 8));
+	body.push_back(uint8_t(m_ir_peer_target));
+	static constexpr uint8_t params[] =
+	{
+		0x01,0x01,0x02, 0x82,0x01,0x01, 0x83,0x01,0x01, 0x84,0x01,0x01,
+		0x85,0x01,0x01, 0x86,0x01,0x0a, 0x08,0x01,0x01
+	};
+	body.insert(body.end(), std::begin(params), std::end(params));
+	m_ir_peer_stage = 4;
+	m_ir_peer_nr = 0;
+	m_ir_peer_ns = 0;
+	ir_peer_send_frame(body);
+}
+
+void asma2k_state::ir_peer_send_rr(uint8_t nr, bool final_bit)
+{
+	uint8_t const control = uint8_t(0x01 | ((nr & 7) << 5) | (final_bit ? 0x10 : 0x00));
+	std::vector<uint8_t> body =
+		{ uint8_t(m_ir_peer_primary ? (m_ir_peer_connection_address | 0x01) : m_ir_peer_connection_address), control };
+	ir_peer_send_frame(body);
+}
+
+void asma2k_state::ir_peer_send_i(std::vector<uint8_t> const &info)
+{
+	uint8_t const control = uint8_t(((m_ir_peer_ns & 7) << 1) | 0x10 | ((m_ir_peer_nr & 7) << 5));
+	std::vector<uint8_t> body =
+		{ uint8_t(m_ir_peer_primary ? (m_ir_peer_connection_address | 0x01) : m_ir_peer_connection_address), control };
+	body.insert(body.end(), info.begin(), info.end());
+	m_ir_peer_ns = (m_ir_peer_ns + 1) & 7;
+	ir_peer_send_frame(body);
+}
+
+void asma2k_state::ir_peer_on_tx_frame(std::vector<uint8_t> const &frame)
+{
+	if ((!m_ir_peer_send_session && !m_ir_peer_print_session) || frame.size() < 4)
+		return;
+
+	uint8_t const control = frame[1];
+
+	if (m_ir_peer_print_session && !m_ir_peer_primary && control == 0x3f && frame.size() >= 16)
+	{
+		m_ir_peer_target = (uint32_t(frame[3]) << 24) | (uint32_t(frame[4]) << 16) |
+			(uint32_t(frame[5]) << 8) | frame[6];
+		uint8_t const slot = frame[12];
+		if (!m_ir_peer_print_discovery_replied && slot == 1)
+		{
+			m_ir_peer_xid_slot = slot;
+			m_ir_peer_print_discovery_replied = true;
+			m_ir_peer_pending = 10;
+		}
+		return;
+	}
+
+	if (m_ir_peer_print_session && !m_ir_peer_primary && control == 0x93 && frame.size() >= 13)
+	{
+		m_ir_peer_target = (uint32_t(frame[2]) << 24) | (uint32_t(frame[3]) << 16) |
+			(uint32_t(frame[4]) << 8) | frame[5];
+		m_ir_peer_connection_address = frame[10] & 0xfe;
+		m_ir_peer_stage = 3;
+		m_ir_peer_pending = 11;
+		return;
+	}
+
+	if (control == 0xbf && frame.size() >= 9)
+	{
+		m_ir_peer_target = (uint32_t(frame[3]) << 24) | (uint32_t(frame[4]) << 16) |
+			(uint32_t(frame[5]) << 8) | frame[6];
+	}
+	else if (m_ir_peer_primary && control == 0x73)
+	{
+		m_ir_peer_stage = 4;
+		m_ir_peer_nr = 0;
+		m_ir_peer_pending = 3;
+	}
+	else if (!(control & 0x01) && m_ir_peer_stage >= 4)
+	{
+		uint8_t const incoming_ns = (control >> 1) & 7;
+		if (incoming_ns != m_ir_peer_nr)
+		{
+			m_ir_peer_pending = 3;
+			return;
+		}
+		m_ir_peer_nr = (m_ir_peer_nr + 1) & 7;
+
+		bool const lm_connect_ias =
+			frame.size() >= 8 && frame[2] == 0x80 && frame[3] == 0x52 && frame[4] == 0x01;
+		bool const ias_query =
+			frame.size() >= 10 && frame[2] == 0x00 && frame[3] == 0x52 && frame[4] == 0x84;
+		bool const lm_connect_service =
+			frame.size() >= 9 && frame[2] == 0x91 && frame[3] == 0x53 && frame[4] == 0x01;
+		bool const lm_connect_irlpt =
+			m_ir_peer_print_session && frame.size() >= 8 &&
+			frame[2] == 0x91 && frame[3] == 0x51 && frame[4] == 0x01;
+		bool const irlpt_data =
+			m_ir_peer_print_session && frame.size() >= 6 &&
+			frame[2] == 0x11 && frame[3] == 0x51;
+		bool const irlpt_disconnect =
+			m_ir_peer_print_session && frame.size() >= 8 &&
+			frame[2] == 0x91 && frame[3] == 0x51 && frame[4] == 0x02;
+
+		if (irlpt_data)
+			m_ir_print_bytes += unsigned(frame.size() - 6);
+
+		static constexpr uint8_t app_greeting_bytes[] =
+			{ 'A','l','p','h','a','S','m','a','r','t',' ','I','R',' ','v','1','.','0' };
+		bool app_greeting =
+			m_ir_peer_send_session && !m_ir_peer_file_receive &&
+			frame.size() == 26 && frame[2] == 0x11 && frame[3] == 0x53 &&
+			frame[4] <= 0x7f && frame[5] == 0x00;
+		if (app_greeting)
+			for (unsigned i = 0; i < std::size(app_greeting_bytes); ++i)
+				app_greeting &= frame[6 + i] == app_greeting_bytes[i];
+
+		bool const app_send_ready =
+			m_ir_peer_send_session && frame.size() >= 9 &&
+			frame[2] == 0x11 && frame[3] == 0x53 && frame[5] == 0x00 && frame[6] == 0xfb;
+		bool const app_file_data =
+			m_ir_peer_file_receive && frame.size() >= 8 &&
+			frame[2] == 0x11 && frame[3] == 0x53 && frame[5] == 0x00;
+		bool const app_send_eof =
+			m_ir_peer_file_receive && frame.size() == 7 &&
+			frame[2] == 0x11 && frame[3] == 0x53;
+
+		if (app_send_ready && !m_ir_peer_file_receive)
+		{
+			m_ir_peer_file_receive = true;
+			m_ir_peer_text_bytes = 0;
+		}
+
+		if (app_file_data)
+			m_ir_peer_text_bytes += unsigned(frame.size() - 8);
+
+		if (app_send_eof)
+			m_ir_peer_file_receive = false;
+
+		if (lm_connect_ias)
+			m_ir_peer_pending = 4;
+		else if (ias_query)
+			m_ir_peer_pending = 5;
+		else if (lm_connect_service)
+			m_ir_peer_pending = 6;
+		else if (lm_connect_irlpt)
+			m_ir_peer_pending = 12;
+		else if (app_greeting)
+			m_ir_peer_pending = 7;
+		else if (app_send_eof)
+			m_ir_peer_pending = 9;
+		else if (app_send_ready || app_file_data)
+			m_ir_peer_pending = 8;
+		else
+			m_ir_peer_pending = 3;
+
+		(void)irlpt_disconnect; // Link teardown is completed by the LAP DISC below.
+	}
+	else if (m_ir_peer_print_session && !m_ir_peer_primary && control == 0x53 && m_ir_peer_stage >= 4)
+	{
+		m_ir_peer_pending = 13;
+	}
+	else if ((control & 0x03) == 0x01 && m_ir_peer_stage >= 4 && BIT(control, 4))
+	{
+		m_ir_peer_pending = 3;
+	}
+}
+
+TIMER_CALLBACK_MEMBER(asma2k_state::ir_peer_timer)
+{
+	static constexpr uint64_t bit_ticks = 210;
+	static constexpr uint64_t pulse_ticks = 36;
+
+	if (!m_ui_ir_enabled || (!m_ir_peer_send_session && !m_ir_peer_print_session))
+	{
+		ir_peer_stop();
+		return;
+	}
+
+	if (!m_ir_peer_active)
+	{
+		// PA6 gates the external I/O window.  Delay the optical peer while
+		// stock firmware has that window selected for its own transmit cycle.
+		if (m_ir_peer_pending && !BIT(m_port_a, 6))
+		{
+			m_ir_peer_timer->adjust(attotime::from_ticks(bit_ticks, 2'000'000));
+			return;
+		}
+
+		uint8_t const pending = m_ir_peer_pending;
+		m_ir_peer_pending = 0;
+		switch (pending)
+		{
+		case 1: ir_peer_send_xid(); return;
+		case 2: ir_peer_send_snrm(); return;
+		case 3: ir_peer_send_rr(m_ir_peer_nr, true); return;
+		case 4: ir_peer_send_i({ 0xd2, 0x00, 0x81, 0x00 }); return;
+		case 5:
+			ir_peer_send_i({ 0x52, 0x00, 0x84, 0x00, 0x00, 0x01, 0x00, 0x01,
+				0x01, 0x00, 0x00, 0x00, 0x11 });
+			return;
+		case 6: ir_peer_send_i({ 0xd3, 0x11, 0x81, 0x00, 0x05 }); return;
+		case 7: ir_peer_send_i({ 0x53, 0x11, 0x05, 0x00, 0xbc, 0x84 }); return;
+		case 8: ir_peer_send_i({ 0x53, 0x11, 0x05, 0x00 }); return;
+		case 9: ir_peer_send_i({ 0x53, 0x11, 0x05, 0x00, 0xbc, 0x92 }); return;
+		case 10: ir_peer_send_xid_response(); return;
+		case 11: ir_peer_send_ua(); return;
+		case 12: ir_peer_send_i({ 0xd1, 0x11, 0x81, 0x00 }); return;
+		case 13:
+			m_ir_print_complete = true;
+			ir_peer_send_frame({ m_ir_peer_connection_address, 0x73 });
+			return;
+		default: return;
+		}
+	}
+
+	if (m_ir_peer_pulse_end)
+	{
+		ir_peer_drive(true);
+		m_ir_peer_pulse_end = false;
+		++m_ir_peer_bit;
+		if (m_ir_peer_bit >= 10)
+		{
+			m_ir_peer_bit = 0;
+			++m_ir_peer_byte;
+		}
+		m_ir_peer_timer->adjust(attotime::from_ticks(bit_ticks - pulse_ticks, 2'000'000));
+		return;
+	}
+
+	if (m_ir_peer_byte >= m_ir_peer_raw.size())
+	{
+		m_ir_peer_active = false;
+		ir_peer_drive(true);
+		if (m_ir_peer_primary && m_ir_peer_stage == 1)
+		{
+			if (m_ir_peer_xid_slot < 6)
+			{
+				++m_ir_peer_xid_slot;
+				m_ir_peer_pending = 1;
+				m_ir_peer_timer->adjust(attotime::from_msec(12));
+			}
+			else
+			{
+				m_ir_peer_stage = 2;
+				m_ir_peer_pending = 2;
+				m_ir_peer_timer->adjust(attotime::from_msec(15));
+			}
+		}
+		return;
+	}
+
+	uint8_t const value = m_ir_peer_raw[m_ir_peer_byte];
+	bool const pulse =
+		(m_ir_peer_bit == 0) ||
+		(m_ir_peer_bit >= 1 && m_ir_peer_bit <= 8 && !BIT(value, m_ir_peer_bit - 1));
+
+	if (pulse)
+	{
+		ir_peer_drive(false);
+		m_ir_peer_pulse_end = true;
+		m_ir_peer_timer->adjust(attotime::from_ticks(pulse_ticks, 2'000'000));
+	}
+	else
+	{
+		++m_ir_peer_bit;
+		if (m_ir_peer_bit >= 10)
+		{
+			m_ir_peer_bit = 0;
+			++m_ir_peer_byte;
+		}
+		m_ir_peer_timer->adjust(attotime::from_ticks(bit_ticks, 2'000'000));
+	}
+}
+
 void asma2k_state::ui_emit_event(std::string const &line)
 {
 	if (m_ui_event_path.empty())
@@ -1145,9 +1827,17 @@ void asma2k_state::ui_process_command(std::string const &line)
 
 	if (line == "IR ON" || line == "IR OFF")
 	{
-		m_ui_ir_enabled = line == "IR ON";
-		ui_emit_event(std::string("STATUS\tIR ") + (m_ui_ir_enabled ? "enabled" : "disabled") +
-			" (byte source integration pending)");
+		bool const enabled = line == "IR ON";
+		if (!enabled)
+		{
+			ir_capture_end(false);
+			m_ir_peer_send_session = false;
+			m_ir_peer_print_session = false;
+			ir_peer_stop();
+		}
+		m_ui_ir_enabled = enabled;
+		m_maincpu->set_input_line(MC68HC11_PAI_LINE, ASSERT_LINE);
+		ui_emit_event(std::string("STATUS\tIR ") + (enabled ? "ready" : "disabled"));
 		return;
 	}
 
@@ -1524,6 +2214,7 @@ void asma2k_state::machine_start()
 	save_item(NAME(m_printer_edge_ticks));
 	save_item(NAME(m_printer_edge_levels));
 	m_printer_frame_timer = timer_alloc(FUNC(asma2k_state::printer_frame_done), this);
+	m_ir_peer_timer = timer_alloc(FUNC(asma2k_state::ir_peer_timer), this);
 	ui_bridge_init();
 }
 
@@ -1538,6 +2229,11 @@ void asma2k_state::machine_reset()
 	if (m_printer_frame_timer)
 		m_printer_frame_timer->adjust(attotime::never);
 	printer_capture_end(false);
+	m_ir_peer_send_session = false;
+	m_ir_peer_print_session = false;
+	ir_capture_end(false);
+	ir_peer_stop();
+	m_maincpu->set_input_line(MC68HC11_PAI_LINE, ASSERT_LINE);
 
 	if (BIT(m_boot_mode->read(), 0))
 		apply_direct_dictrom_bootstrap();
@@ -1588,6 +2284,7 @@ void asma2k_state::asma2k(machine_config &config)
 	alphasmart(config);
 	m_maincpu->in_pa_callback().set(FUNC(asma2k_state::asma2k_port_a_r));
 	m_maincpu->out_pd_callback().set(FUNC(asma2k_state::asma2k_port_d_w));
+	m_maincpu->instruction_callback().set(FUNC(asma2k_state::ir_instruction_w));
 	m_maincpu->set_addrmap(AS_PROGRAM, &asma2k_state::asma2k_mem);
 
 	// External user-supplied images.  These devices are intentionally not
