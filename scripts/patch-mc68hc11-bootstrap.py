@@ -115,7 +115,7 @@ def patch_bootstrap(h, c, replace, donor):
     c = replace(c, "void mc68hc11d0_device::device_reset()",
                 "void mc68hc11d0_device::device_start()\n{\n\tmc68hc11_cpu_device::device_start();\n\tsave_item(NAME(m_hprio));\n\tsave_item(NAME(m_diag_bootstrap));\n}\n\nvoid mc68hc11d0_device::device_reset()", "D0 start")
     c = replace(c, "\tm_port_data[0] &= 0x8f;\n\tddr_w<0>(0x70);\n}",
-                "\tm_port_data[0] &= 0x8f;\n\tddr_w<0>(0x70);\n\tm_hprio = m_diag_bootstrap ? 0xc0 : 0x00;\n}", "D0 reset")
+                "\tm_port_data[0] &= 0x8f;\n\tddr_w<0>(0x70);\n\tm_hprio = 0x00; // RESET always restores ordinary mode.\n}", "D0 reset")
     c = replace(c, "void mc68hc11e1_device::device_reset()",
                 DONOR_HPRIO + "void mc68hc11e1_device::device_reset()", "HPRIO implementation")
     c = replace(c, "void mc68hc11_cpu_device::execute_set_input(",
