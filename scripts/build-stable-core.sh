@@ -26,6 +26,7 @@ DRIVER_DST="$MAME_TREE/src/mame/skeleton/alphasma.cpp"
 HC11_CPP="$MAME_TREE/src/devices/cpu/mc68hc11/mc68hc11.cpp"
 HC11_H="$MAME_TREE/src/devices/cpu/mc68hc11/mc68hc11.h"
 HC11_PAI_PATCHER="$REPO_DIR/scripts/patch-mc68hc11-pai.py"
+HC11_BOOT_PATCHER="$REPO_DIR/scripts/patch-mc68hc11-direct-dictrom.py"
 MAME_LST="$MAME_TREE/src/mame/mame.lst"
 OUT_DIR="$REPO_DIR/out"
 OUT_BIN="$OUT_DIR/as2k-bin"
@@ -35,6 +36,7 @@ OUT_BIN="$OUT_DIR/as2k-bin"
 [ -f "$HC11_CPP" ] || { echo "Not a compatible MAME tree: $HC11_CPP missing" >&2; exit 2; }
 [ -f "$HC11_H" ] || { echo "Not a compatible MAME tree: $HC11_H missing" >&2; exit 2; }
 [ -f "$HC11_PAI_PATCHER" ] || { echo "Missing recovered HC11 PAI patcher: $HC11_PAI_PATCHER" >&2; exit 2; }
+[ -f "$HC11_BOOT_PATCHER" ] || { echo "Missing HC11 Direct DictROM patcher: $HC11_BOOT_PATCHER" >&2; exit 2; }
 [ -f "$MAME_LST" ] || { echo "Not a compatible MAME tree: $MAME_LST missing" >&2; exit 2; }
 [ -f "$MAME_TREE/makefile" ] || { echo "Not a compatible MAME tree: makefile missing" >&2; exit 2; }
 
@@ -59,6 +61,8 @@ cp "$DRIVER_SRC" "$DRIVER_DST"
 # Recover only the already-validated HC11 PA7/PAI pulse-accumulator support
 # needed by the AS2000 IrDA peer.  The donor CPU sources are restored on exit.
 python3 "$HC11_PAI_PATCHER" "$MAME_TREE"
+# Port DIAG-proven HC11 reset-release semantics; existing trap restores donor.
+python3 "$HC11_BOOT_PATCHER" "$MAME_TREE"
 
 # MAME's global mame.lst still associates skeleton/alphasma.cpp with AlphaSmart
 # Pro. The reduced driver intentionally omits that machine. Remove only that
