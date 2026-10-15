@@ -18,8 +18,12 @@ case "$JOBS" in ''|*[!0-9]*|0) fail "Invalid AS2K_JOBS" ;; esac
 SOURCE=$(cd "$SOURCE" && pwd)
 MAME=$(cd "$MAME" && pwd)
 [ -z "$(git -C "$SOURCE" status --porcelain)" ] || fail "Source checkout has local modifications"
-git -C "$SOURCE" cat-file -e "$REF^{commit}" 2>/dev/null ||
-    git -C "$SOURCE" fetch --no-tags origin "$REF" || fail "Unable to fetch pinned revision"
+if ! git -C "$SOURCE" cat-file -e "$REF^{commit}" 2>/dev/null; then
+    git -C "$SOURCE" fetch --no-tags origin feature/stable-payload-auto-boot-b3-20261015 ||
+        fail "Unable to fetch approved branch"
+    git -C "$SOURCE" cat-file -e "$REF^{commit}" 2>/dev/null ||
+        fail "Pinned revision not available in local Git history"
+fi
 [ -f "$MAME/src/mame/skeleton/alphasma.cpp" ] || fail "Incompatible donor tree"
 WORK=$(mktemp -d "${TMPDIR:-/tmp}/as2k-vontar-update.XXXXXXXX")
 BACKUP="$WORK/backup"
@@ -44,10 +48,12 @@ sh "$WORK/src/scripts/build-stable-core.sh" "$MAME" "$JOBS" || fail "Incremental
 "$WORK/src/out/as2k-bin" -validate || fail "MAME validation"
 say "BUILD_PASS"
 # Preserve system installation for rollback. Never touch XDG private data.
-for f in "$INST/as2k-bin" "$INST/frontend/as2k_ui.py"; do
-    [ ! -e "$f" ] || cp -p "$f" "$BACKUP/$(basename "$f")"
-done
-if ! sudo -n sh "$WORK/src/scripts/install-stable.sh" "$WORK/src/out/as2k-bin" "$PREFIX"; then
+[ -x "$INST/as2k-bin" ] || fail "Existing installed AS2K core missing"
+[ -f "$INST/frontend/as2k_ui.py" ] || fail "Existing installed GTK missing"
+cp -p "$INST/as2k-bin" "$BACKUP/as2k-bin"
+cp -p "$INST/frontend/as2k_ui.py" "$BACKUP/as2k_ui.py"
+if ! sudo -n install -m 0755 "$WORK/src/out/as2k-bin" "$INST/as2k-bin" ||
+   ! sudo -n install -m 0755 "$WORK/src/frontend/as2k_ui.py" "$INST/frontend/as2k_ui.py"; then
     rollback
     fail "Install failed; core and GTK restored"
 fi
