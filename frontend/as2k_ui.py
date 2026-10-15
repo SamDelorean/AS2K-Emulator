@@ -206,8 +206,7 @@ class AS2KWindow(Gtk.ApplicationWindow):
         self._menu_item(file_menu, "Abrir ROM…", self._choose_firmware)
         self._menu_item(file_menu, "Abrir DictROM…", self._choose_dictrom)
         file_menu.append(Gtk.SeparatorMenuItem())
-        self._menu_item(file_menu, "Cargar bootstrap externo…", self._choose_bootstrap)
-        self._menu_item(file_menu, "Arranque normal", self._clear_bootstrap)
+        self._menu_item(file_menu, "Abrir ROM payload…", self._choose_bootstrap)
         file_menu.append(Gtk.SeparatorMenuItem())
         self._menu_item(file_menu, "Captura de pantalla…", self._save_screenshot)
         self.record_start_item = self._menu_item(file_menu, "Iniciar grabación", self._start_recording)
@@ -511,8 +510,11 @@ class AS2KWindow(Gtk.ApplicationWindow):
         path = self._choose_file("Seleccionar ROM de AlphaSmart 2000")
         if path:
             self.firmware_path = path
-            self._send_control(f"FIRMWARE {path}")
-            self.status.set_text("ROM seleccionada; use Máquina → Reiniciar AlphaSmart")
+            if self._send_control(f"FIRMWARE {path}") and self._send_control("BOOTSTRAP CLEAR"):
+                self.payload_name = "STOCK"
+                self.payload_path = None
+                self._update_header()
+                self.status.set_text("ROM normal seleccionada; reinicio solicitado")
 
     def _choose_dictrom(self, *_args) -> None:
         path = self._choose_file("Seleccionar DictROM")
@@ -522,14 +524,25 @@ class AS2KWindow(Gtk.ApplicationWindow):
             self.status.set_text("DictROM seleccionada; use Máquina → Reiniciar AlphaSmart")
 
     def _choose_bootstrap(self, *_args) -> None:
-        path = self._choose_file("Seleccionar programa externo de arranque")
-        if path:
+        path = self._choose_file("Seleccionar ROM payload (bootstrap)")
+        if not path:
+            return
+        try:
+            size = path.stat().st_size
+            if not 1 <= size <= 192 or not path.is_file():
+                raise ValueError("El bootstrap inicial debe contener entre 1 y 192 bytes")
+            with path.open("rb") as stream:
+                if len(stream.read(193)) != size:
+                    raise ValueError("No se pudo leer el bootstrap completo")
+        except (OSError, ValueError) as exc:
+            self._error("ROM payload no válida", str(exc))
+            return
+        if self._send_control(f"BOOTSTRAP_FILE {path}"):
             self.payload_name = "EXTERNAL"
-            self._send_control(f"BOOTSTRAP_FILE {path}")
+            self.payload_path = path
+            self._update_header()
+            self.status.set_text("ROM payload enviada; verificando carga en el núcleo")
 
-    def _clear_bootstrap(self, *_args) -> None:
-        self.payload_name = "STOCK"
-        self._send_control("BOOTSTRAP CLEAR")
 
     def _save_dialog(self, title: str, default_name: str) -> Optional[Path]:
         dialog = Gtk.FileChooserDialog(
