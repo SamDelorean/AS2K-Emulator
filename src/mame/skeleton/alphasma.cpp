@@ -120,6 +120,7 @@ public:
 protected:
 	virtual void machine_start() override ATTR_COLD;
 	virtual void machine_reset() override ATTR_COLD;
+	virtual void device_reset_after_children() override ATTR_COLD;
 
 private:
 	DECLARE_DEVICE_IMAGE_LOAD_MEMBER(firmware_load);
@@ -127,7 +128,6 @@ private:
 	uint8_t firmware_r(offs_t offset);
 	uint8_t dictrom_r(offs_t offset);
 	bool stage_image_file(std::string const &path, bool firmware);
-	bool set_cpu_state(char const *symbol, uint64_t value);
 	void apply_direct_dictrom_bootstrap();
 	void lcd_ctrl_w(uint8_t data);
 	uint8_t asma2k_port_a_r();
@@ -2056,55 +2056,15 @@ bool asma2k_state::stage_image_file(std::string const &path, bool firmware)
 }
 
 
-bool asma2k_state::set_cpu_state(char const *symbol, uint64_t value)
-{
-	for (auto const &entry : m_maincpu->state_entries())
-	{
-		if (!strcmp(entry->symbol(), symbol))
-		{
-			m_maincpu->set_state_int(entry->index(), value);
-			return true;
-		}
-	}
-
-	return false;
-}
-
 void asma2k_state::apply_direct_dictrom_bootstrap()
 {
-	// Stable Direct DictROM Bootstrap models the machine state after the
-	// ATtiny/HC11 bootstrap stage-0 has completed.  It intentionally does not
-	// emulate the SCI download or temporary HPRIO special-mode transition.
-	//
-	// The independently authored stage-0 contract is:
-	//   SEI; LDS #$00C3; CONFIG|=$04; MDA=1;
-	//   PORTA&=~$70; CTRL=$04; clear RBOOT/SMOD; JMP $4000.
-	//
-	// Apply bus/device state first and PC last.  This is therefore not an
-	// arbitrary PC jump: every observable post-bootstrap precondition modeled
-	// by the stable emulator is established before DictROM executes.
+	// Port of DIAG post-bootstrap reset release.  The HC11 helper clears
+	// pending RESET and reset-wait before committing PC=$4000.
 	port_a_w(0x00);
 	lcd_ctrl_w(0x04);
-
-	bool ok = true;
-	ok &= set_cpu_state("SP", 0x00c3);
-	ok &= set_cpu_state("CCR", 0x00d0); // S|X|I remain set
-	ok &= set_cpu_state("A", 0x0004);
-	ok &= set_cpu_state("B", 0x0000);
-	ok &= set_cpu_state("IX", 0x0000);
-	ok &= set_cpu_state("IY", 0x0000);
-	ok &= set_cpu_state("CONFIG", 0x0004);
-
-	if (!ok)
-		fatalerror("AS2K stable Direct DictROM Bootstrap: HC11 state contract unavailable");
-
-	// Entry is committed only after all other preconditions have succeeded.
-	if (!set_cpu_state("PC", 0x4000))
-		fatalerror("AS2K stable Direct DictROM Bootstrap: PC state unavailable");
-
-	logerror("AS2K stable Direct DictROM Bootstrap: PC=4000 SP=00C3 CCR=D0 A=04 PA=00 CTRL=04 bank=0\n");
+	m_maincpu->as2k_direct_dictrom_entry(0x4000);
+	logerror("AS2K stable Direct DictROM Bootstrap: PC=4000 SP=00C3 CCR=D0 A=04 PA=00 CTRL=04 bank=0 reset-cleared=1\n");
 }
-
 
 /* Input ports */
 static INPUT_PORTS_START( asma2k )
@@ -2348,7 +2308,12 @@ void asma2k_state::machine_reset()
 	ir_capture_end(false);
 	ir_peer_stop();
 	m_maincpu->set_input_line(MC68HC11_PAI_LINE, ASSERT_LINE);
+}
 
+void asma2k_state::device_reset_after_children()
+{
+	// Root reset precedes child reset; inject only after the HC11 resets.
+	// Stock mode does not use this path.
 	if (BIT(m_boot_mode->read(), 0))
 		apply_direct_dictrom_bootstrap();
 }
