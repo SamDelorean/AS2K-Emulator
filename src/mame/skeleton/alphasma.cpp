@@ -1894,7 +1894,8 @@ void asma2k_state::ui_process_command(std::string const &line)
 		return;
 	}
 
-	if (line == "BOOTSTRAP CLEAR")
+	// Compatible with the existing compact VONTAR menu and the Stable UI.
+	if (line == "BOOTSTRAP CLEAR" || line == "PAYLOAD STOCK")
 	{
 		m_bootstrap.fill(0);
 		m_bootstrap_size = 0;
@@ -1902,15 +1903,21 @@ void asma2k_state::ui_process_command(std::string const &line)
 		machine().schedule_soft_reset();
 		return;
 	}
-	if (line.rfind("BOOTSTRAP_FILE ", 0) == 0)
+	if (line.rfind("BOOTSTRAP_FILE ", 0) == 0 || line.rfind("PAYLOAD_FILE ", 0) == 0)
 	{
-		if (!load_bootstrap_file(line.substr(15)))
+		size_t const prefix = line.rfind("BOOTSTRAP_FILE ", 0) == 0 ? 15 : 13;
+		if (!load_bootstrap_file(line.substr(prefix)))
 		{
 			ui_emit_event("STATUS\tInvalid external bootstrap image");
 			return;
 		}
 		ui_emit_event("STATUS\tExternal bootstrap selected");
 		machine().schedule_soft_reset();
+		return;
+	}
+	if (line.rfind("PAYLOAD ", 0) == 0)
+	{
+		ui_emit_event("STATUS\tSelect an external bootstrap file");
 		return;
 	}
 
