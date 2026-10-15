@@ -72,8 +72,8 @@ class AS2KWindow(Gtk.ApplicationWindow):
         self.frame_file = Path(os.environ.get("AS2K_UI_FRAME_FILE", runtime / "lcd.bin"))
         self.frame_mtime_ns = -1
         self.event_offset = 0
-        self.control_file.write_text("", encoding="utf-8")
-        self.event_file.write_text("", encoding="utf-8")
+        self.control_file.touch(exist_ok=True)
+        self.event_file.touch(exist_ok=True)
 
         self.video_process: Optional[subprocess.Popen] = None
         self.video_tmp: Optional[Path] = None
@@ -206,9 +206,9 @@ class AS2KWindow(Gtk.ApplicationWindow):
         self._menu_item(file_menu, "Abrir ROM…", self._choose_firmware)
         self._menu_item(file_menu, "Abrir DictROM…", self._choose_dictrom)
         file_menu.append(Gtk.SeparatorMenuItem())
-        if self.workbench:
-            file_menu.append(self._build_payload_menu())
-            file_menu.append(Gtk.SeparatorMenuItem())
+        self._menu_item(file_menu, "Cargar bootstrap externo…", self._choose_bootstrap)
+        self._menu_item(file_menu, "Arranque normal", self._clear_bootstrap)
+        file_menu.append(Gtk.SeparatorMenuItem())
         self._menu_item(file_menu, "Captura de pantalla…", self._save_screenshot)
         self.record_start_item = self._menu_item(file_menu, "Iniciar grabación", self._start_recording)
         self.record_stop_item = self._menu_item(file_menu, "Detener y guardar…", self._stop_recording)
@@ -258,28 +258,6 @@ class AS2KWindow(Gtk.ApplicationWindow):
         self._menu_item(help_menu, "Acerca de AS2K Emulator", self._show_about)
 
         return bar
-
-    def _build_payload_menu(self) -> Gtk.MenuItem:
-        root = Gtk.MenuItem(label="Payload")
-        menu = Gtk.Menu()
-        root.set_submenu(menu)
-        group = None
-        for label, name in (
-            ("Ninguno / arranque normal", "STOCK"),
-            ("Payload-0", "P0"),
-            ("Payload-1", "P1"),
-            ("Payload-1b", "P1B"),
-            ("Payload-2", "P2"),
-        ):
-            item = Gtk.RadioMenuItem.new_with_label(group, label)
-            group = item.get_group()
-            item.connect("toggled", self._payload_selected, name)
-            if name == "STOCK":
-                item.set_active(True)
-            menu.append(item)
-        menu.append(Gtk.SeparatorMenuItem())
-        self._menu_item(menu, "Abrir payload externo…", self._choose_external_payload)
-        return root
 
     @staticmethod
     def _virtual_keys():
@@ -543,21 +521,15 @@ class AS2KWindow(Gtk.ApplicationWindow):
             self._send_control(f"DICTROM {path}")
             self.status.set_text("DictROM seleccionada; use Máquina → Reiniciar AlphaSmart")
 
-    def _payload_selected(self, item: Gtk.RadioMenuItem, name: str) -> None:
-        if not item.get_active():
-            return
-        self.payload_name = name
-        self.payload_path = None
-        self._send_control(f"PAYLOAD {name}")
-        self._update_header()
-
-    def _choose_external_payload(self, *_args) -> None:
-        path = self._choose_file("Seleccionar payload externo")
+    def _choose_bootstrap(self, *_args) -> None:
+        path = self._choose_file("Seleccionar programa externo de arranque")
         if path:
-            self.payload_name = "EXT"
-            self.payload_path = path
-            self._send_control(f"PAYLOAD_FILE {path}")
-            self._update_header()
+            self.payload_name = "EXTERNAL"
+            self._send_control(f"BOOTSTRAP_FILE {path}")
+
+    def _clear_bootstrap(self, *_args) -> None:
+        self.payload_name = "STOCK"
+        self._send_control("BOOTSTRAP CLEAR")
 
     def _save_dialog(self, title: str, default_name: str) -> Optional[Path]:
         dialog = Gtk.FileChooserDialog(
