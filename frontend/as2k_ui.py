@@ -58,6 +58,7 @@ class AS2KWindow(Gtk.ApplicationWindow):
         self.workbench = os.environ.get("AS2K_WORKBENCH", "0") == "1"
         self.payload_name = "STOCK"
         self.payload_path: Optional[Path] = None
+        self.pending_payload_path: Optional[Path] = None
         self.firmware_path: Optional[Path] = None
         self.dictrom_path: Optional[Path] = None
         self.send_capture = bytearray()
@@ -369,7 +370,21 @@ class AS2KWindow(Gtk.ApplicationWindow):
         parts = line.split("\t")
         kind = parts[0]
         if kind == "STATUS" and len(parts) >= 2:
-            self.status.set_text(parts[1])
+            message = parts[1]
+            if self.pending_payload_path is not None:
+                if message == "External bootstrap selected":
+                    self.payload_path = self.pending_payload_path
+                    self.payload_name = "EXTERNAL"
+                    self.pending_payload_path = None
+                    self._update_header()
+                elif message == "Invalid external bootstrap image":
+                    self.pending_payload_path = None
+            if message == "Stock firmware reset selected":
+                self.payload_name = "STOCK"
+                self.payload_path = None
+                self.pending_payload_path = None
+                self._update_header()
+            self.status.set_text(message)
             return
         if kind == "SEND_READY" and len(parts) >= 2:
             path = Path(parts[1])
@@ -508,13 +523,10 @@ class AS2KWindow(Gtk.ApplicationWindow):
 
     def _choose_firmware(self, *_args) -> None:
         path = self._choose_file("Seleccionar ROM de AlphaSmart 2000")
-        if path:
+        if path and self._send_control(f"FIRMWARE {path}"):
             self.firmware_path = path
-            if self._send_control(f"FIRMWARE {path}") and self._send_control("BOOTSTRAP CLEAR"):
-                self.payload_name = "STOCK"
-                self.payload_path = None
-                self._update_header()
-                self.status.set_text("ROM normal seleccionada; reinicio solicitado")
+            if self._send_control("BOOTSTRAP CLEAR"):
+                self.status.set_text("ROM normal solicitada; esperando confirmación del núcleo")
 
     def _choose_dictrom(self, *_args) -> None:
         path = self._choose_file("Seleccionar DictROM")
@@ -537,11 +549,12 @@ class AS2KWindow(Gtk.ApplicationWindow):
         except (OSError, ValueError) as exc:
             self._error("ROM payload no válida", str(exc))
             return
+        if self.pending_payload_path is not None:
+            self._error("Carga en curso", "Espere la respuesta del núcleo antes de seleccionar otro payload")
+            return
         if self._send_control(f"BOOTSTRAP_FILE {path}"):
-            self.payload_name = "EXTERNAL"
-            self.payload_path = path
-            self._update_header()
-            self.status.set_text("ROM payload enviada; verificando carga en el núcleo")
+            self.pending_payload_path = path
+            self.status.set_text("ROM payload enviada; esperando confirmación del núcleo")
 
 
     def _save_dialog(self, title: str, default_name: str) -> Optional[Path]:
