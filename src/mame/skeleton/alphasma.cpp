@@ -1894,22 +1894,53 @@ void asma2k_state::ui_process_command(std::string const &line)
 		return;
 	}
 
-	if (line == "BOOTSTRAP CLEAR")
+	if (line == "BOOTSTRAP CLEAR" || line.rfind("BOOTSTRAP CLEAR ", 0) == 0)
 	{
+		std::string const request = line == "BOOTSTRAP CLEAR" ? "" : line.substr(16);
+		if (request.find_first_of(" \t\r\n") != std::string::npos)
+		{
+			ui_emit_event("STATUS\tInvalid bootstrap request");
+			return;
+		}
 		m_bootstrap.fill(0);
 		m_bootstrap_size = 0;
 		ui_emit_event("STATUS\tStock firmware reset selected");
+		if (!request.empty())
+			ui_emit_event("BOOT_ACK\t" + request + "\tSTOCK");
 		machine().schedule_soft_reset();
 		return;
 	}
 	if (line.rfind("BOOTSTRAP_FILE ", 0) == 0)
 	{
-		if (!load_bootstrap_file(line.substr(15)))
+		std::string const argument = line.substr(15);
+		std::string request;
+		std::string path = argument;
+		if (argument.rfind("REQ:", 0) == 0)
+		{
+			auto const delim = argument.find(' ');
+			if (delim == std::string::npos)
+			{
+				ui_emit_event("STATUS\tInvalid bootstrap request");
+				return;
+			}
+			request = argument.substr(4, delim - 4);
+			path = argument.substr(delim + 1);
+			if (request.empty() || request.find_first_not_of("0123456789") != std::string::npos)
+			{
+				ui_emit_event("STATUS\tInvalid bootstrap request");
+				return;
+			}
+		}
+		if (!load_bootstrap_file(path))
 		{
 			ui_emit_event("STATUS\tInvalid external bootstrap image");
+			if (!request.empty())
+				ui_emit_event("BOOT_ACK\t" + request + "\tINVALID");
 			return;
 		}
 		ui_emit_event("STATUS\tExternal bootstrap selected");
+		if (!request.empty())
+			ui_emit_event("BOOT_ACK\t" + request + "\tACTIVE");
 		machine().schedule_soft_reset();
 		return;
 	}
