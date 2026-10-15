@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import hashlib
 import pathlib
+import runpy
 import sys
 
 
 def replace_once(text: str, old: str, new: str, label: str) -> str:
-    if old not in text:
+    if text.count(old) != 1:
         raise SystemExit(f"HC11 PAI patch source mismatch: {label}")
     return text.replace(old, new, 1)
 
@@ -24,6 +26,17 @@ def main() -> int:
 
     h = header.read_text(encoding="utf-8")
     c = source.read_text(encoding="utf-8")
+
+    donor = "diagnostic_bootstrap_entry" in h
+    if donor:
+        def blob(data):
+            raw = data.encode("utf-8")
+            return hashlib.sha1(b"blob " + str(len(raw)).encode() + b"\0" + raw).hexdigest()
+        if (blob(h), blob(c)) != (
+            "25161fb8c9900268b0f37a390dfe695a8f9c94dc",
+            "18c27d796c257d79a320639e583cfa52c5a17807",
+        ):
+            raise SystemExit("BLOCKED_CPU_PATCH_CONFLICT: unrecognized pre-existing bootstrap source")
 
     if "MC68HC11_PAI_LINE" in h:
         raise SystemExit("HC11 PAI support is already present; refusing double patch")
@@ -303,9 +316,12 @@ uint8_t mc68hc11a1_device::pactl_ddra7_r()""",
     else:
         raise SystemExit("HC11 PAI patch source mismatch: AS2K IR observer")
 
+    bootstrap = runpy.run_path(str(pathlib.Path(__file__).with_name("patch-mc68hc11-bootstrap.py")))
+    h, c = bootstrap["patch_bootstrap"](h, c, replace_once, donor)
+
     header.write_text(h, encoding="utf-8")
     source.write_text(c, encoding="utf-8")
-    print("AS2K HC11 PAI recovery patch: PASS")
+    print("AS2K HC11 PAI + bounded bootstrap patch: PASS")
     return 0
 
 

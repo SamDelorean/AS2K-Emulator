@@ -110,7 +110,6 @@ public:
 		, m_firmware(*this, "firmware")
 		, m_dictrom(*this, "dictrom")
 		, m_pc_connected(*this, "PC_CONNECTED")
-		, m_boot_mode(*this, "BOOT_MODE")
 	{
 	}
 
@@ -127,8 +126,7 @@ private:
 	uint8_t firmware_r(offs_t offset);
 	uint8_t dictrom_r(offs_t offset);
 	bool stage_image_file(std::string const &path, bool firmware);
-	bool set_cpu_state(char const *symbol, uint64_t value);
-	void apply_direct_dictrom_bootstrap();
+	bool load_bootstrap_file(std::string const &path);
 	void lcd_ctrl_w(uint8_t data);
 	uint8_t asma2k_port_a_r();
 	void asma2k_port_d_w(uint8_t data);
@@ -180,7 +178,6 @@ private:
 	required_device<generic_slot_device> m_firmware;
 	required_device<generic_slot_device> m_dictrom;
 	required_ioport m_pc_connected;
-	required_ioport m_boot_mode;
 
 	std::array<uint8_t, 0x8000> m_active_firmware{};
 	std::array<uint8_t, 0x8000> m_pending_firmware{};
@@ -189,6 +186,9 @@ private:
 	bool m_pending_firmware_valid = false;
 	bool m_pending_dictrom_valid = false;
 
+	// Optional user-supplied internal-RAM boot program; empty means stock RESET.
+	std::array<uint8_t, 192> m_bootstrap{};
+	uint16_t m_bootstrap_size = 0;
 	uint8_t m_lcd_ctrl = 0;
 	uint8_t m_dict_bank = 0;
 	uint16_t m_pc_frame = 0;
@@ -1894,9 +1894,23 @@ void asma2k_state::ui_process_command(std::string const &line)
 		return;
 	}
 
-	if (line.rfind("PAYLOAD ", 0) == 0 || line.rfind("PAYLOAD_FILE ", 0) == 0)
+	if (line == "BOOTSTRAP CLEAR")
 	{
-		ui_emit_event("STATUS\tPayload selection recorded by UI; load bridge pending");
+		m_bootstrap.fill(0);
+		m_bootstrap_size = 0;
+		ui_emit_event("STATUS\tStock firmware reset selected");
+		machine().schedule_soft_reset();
+		return;
+	}
+	if (line.rfind("BOOTSTRAP_FILE ", 0) == 0)
+	{
+		if (!load_bootstrap_file(line.substr(15)))
+		{
+			ui_emit_event("STATUS\tInvalid external bootstrap image");
+			return;
+		}
+		ui_emit_event("STATUS\tExternal bootstrap selected");
+		machine().schedule_soft_reset();
 		return;
 	}
 
@@ -2056,55 +2070,21 @@ bool asma2k_state::stage_image_file(std::string const &path, bool firmware)
 }
 
 
-bool asma2k_state::set_cpu_state(char const *symbol, uint64_t value)
+bool asma2k_state::load_bootstrap_file(std::string const &path)
 {
-	for (auto const &entry : m_maincpu->state_entries())
-	{
-		if (!strcmp(entry->symbol(), symbol))
-		{
-			m_maincpu->set_state_int(entry->index(), value);
-			return true;
-		}
-	}
-
-	return false;
+	std::ifstream input(path, std::ios::binary | std::ios::ate);
+	std::streamoff const length = input ? std::streamoff(input.tellg()) : -1;
+	if (length < 1 || length > std::streamoff(m_bootstrap.size()))
+		return false;
+	std::array<uint8_t, 192> pending{};
+	input.seekg(0, std::ios::beg);
+	input.read(reinterpret_cast<char *>(pending.data()), length);
+	if (input.gcount() != length || input.peek() != std::char_traits<char>::eof())
+		return false;
+	m_bootstrap = pending;
+	m_bootstrap_size = uint16_t(length);
+	return true;
 }
-
-void asma2k_state::apply_direct_dictrom_bootstrap()
-{
-	// Stable Direct DictROM Bootstrap models the machine state after the
-	// ATtiny/HC11 bootstrap stage-0 has completed.  It intentionally does not
-	// emulate the SCI download or temporary HPRIO special-mode transition.
-	//
-	// The independently authored stage-0 contract is:
-	//   SEI; LDS #$00C3; CONFIG|=$04; MDA=1;
-	//   PORTA&=~$70; CTRL=$04; clear RBOOT/SMOD; JMP $4000.
-	//
-	// Apply bus/device state first and PC last.  This is therefore not an
-	// arbitrary PC jump: every observable post-bootstrap precondition modeled
-	// by the stable emulator is established before DictROM executes.
-	port_a_w(0x00);
-	lcd_ctrl_w(0x04);
-
-	bool ok = true;
-	ok &= set_cpu_state("SP", 0x00c3);
-	ok &= set_cpu_state("CCR", 0x00d0); // S|X|I remain set
-	ok &= set_cpu_state("A", 0x0004);
-	ok &= set_cpu_state("B", 0x0000);
-	ok &= set_cpu_state("IX", 0x0000);
-	ok &= set_cpu_state("IY", 0x0000);
-	ok &= set_cpu_state("CONFIG", 0x0004);
-
-	if (!ok)
-		fatalerror("AS2K stable Direct DictROM Bootstrap: HC11 state contract unavailable");
-
-	// Entry is committed only after all other preconditions have succeeded.
-	if (!set_cpu_state("PC", 0x4000))
-		fatalerror("AS2K stable Direct DictROM Bootstrap: PC state unavailable");
-
-	logerror("AS2K stable Direct DictROM Bootstrap: PC=4000 SP=00C3 CCR=D0 A=04 PA=00 CTRL=04 bank=0\n");
-}
-
 
 /* Input ports */
 static INPUT_PORTS_START( asma2k )
@@ -2258,11 +2238,6 @@ static INPUT_PORTS_START( asma2k )
 	PORT_START("PC_CONNECTED")
 	PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_OTHER) PORT_NAME("PC Connected (Pause/Break)") PORT_CODE(KEYCODE_PAUSE) PORT_TOGGLE PORT_CHANGED_MEMBER(DEVICE_SELF, FUNC(asma2k_state::pc_connected_changed), 0)
 
-	PORT_START("BOOT_MODE")
-	PORT_CONFNAME(0x01, 0x00, "Startup mode")
-	PORT_CONFSETTING(0x00, "Normal firmware boot")
-	PORT_CONFSETTING(0x01, "Direct DictROM bootstrap")
-
 	PORT_START("BATTERY")
 	PORT_CONFNAME(0x01, 0x01, "Battery status")
 	PORT_CONFSETTING (0x00, DEF_STR(Low))
@@ -2307,6 +2282,8 @@ void asma2k_state::machine_start()
 	save_item(NAME(m_pending_dictrom));
 	save_item(NAME(m_pending_firmware_valid));
 	save_item(NAME(m_pending_dictrom_valid));
+	save_item(NAME(m_bootstrap));
+	save_item(NAME(m_bootstrap_size));
 	save_item(NAME(m_lcd_ctrl));
 	save_item(NAME(m_dict_bank));
 	save_item(NAME(m_printer_frame_active));
@@ -2316,6 +2293,9 @@ void asma2k_state::machine_start()
 	save_item(NAME(m_printer_edge_levels));
 	m_printer_frame_timer = timer_alloc(FUNC(asma2k_state::printer_frame_done), this);
 	m_ir_peer_timer = timer_alloc(FUNC(asma2k_state::ir_peer_timer), this);
+	if (char const *file = std::getenv("AS2K_BOOTSTRAP_FILE"); file && *file)
+		if (!load_bootstrap_file(file))
+			fatalerror("Invalid external bootstrap image");
 	ui_bridge_init();
 }
 
@@ -2349,8 +2329,11 @@ void asma2k_state::machine_reset()
 	ir_peer_stop();
 	m_maincpu->set_input_line(MC68HC11_PAI_LINE, ASSERT_LINE);
 
-	if (BIT(m_boot_mode->read(), 0))
-		apply_direct_dictrom_bootstrap();
+	// Called by MAME after child-device reset; stock remains the default.
+	auto &cpu = downcast<mc68hc11d0_device &>(*m_maincpu);
+	cpu.set_diag_bootstrap(m_bootstrap_size != 0);
+	if (m_bootstrap_size)
+		cpu.diag_bootstrap_load(m_bootstrap.data(), m_bootstrap_size, 0x0040);
 }
 
 void alphasmart_state::machine_reset()

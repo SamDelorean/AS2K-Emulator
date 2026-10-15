@@ -56,8 +56,9 @@ trap restore EXIT HUP INT TERM
 
 cp "$DRIVER_SRC" "$DRIVER_DST"
 
-# Recover only the already-validated HC11 PA7/PAI pulse-accumulator support
-# needed by the AS2000 IrDA peer.  The donor CPU sources are restored on exit.
+# Merge recovered HC11 PA7/PAI support with the pinned donor-derived bounded
+# AS2K reset/HPRIO/RAM-entry contract. Both are patched in memory, fail closed
+# on unknown bootstrap sources, and the donor CPU originals are restored on exit.
 python3 "$HC11_PAI_PATCHER" "$MAME_TREE"
 
 # MAME's global mame.lst still associates skeleton/alphasma.cpp with AlphaSmart
