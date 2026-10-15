@@ -26,6 +26,10 @@ BACKUP="$WORK/backup"
 mkdir -p "$BACKUP"
 INST="$PREFIX/libexec/as2k"
 mkdir -p "$WORK/src"
+rollback(){
+    [ ! -f "$BACKUP/as2k-bin" ] || sudo -n cp -p "$BACKUP/as2k-bin" "$INST/as2k-bin"
+    [ ! -f "$BACKUP/as2k_ui.py" ] || sudo -n cp -p "$BACKUP/as2k_ui.py" "$INST/frontend/as2k_ui.py"
+}
 cleanup(){ rm -rf "$WORK"; }
 trap cleanup EXIT HUP INT TERM
 git -C "$SOURCE" archive "$REF" | tar -x -C "$WORK/src"
@@ -44,10 +48,11 @@ for f in "$INST/as2k-bin" "$INST/frontend/as2k_ui.py"; do
     [ ! -e "$f" ] || cp -p "$f" "$BACKUP/$(basename "$f")"
 done
 if ! sudo -n sh "$WORK/src/scripts/install-stable.sh" "$WORK/src/out/as2k-bin" "$PREFIX"; then
-    [ ! -f "$BACKUP/as2k-bin" ] || sudo -n cp -p "$BACKUP/as2k-bin" "$INST/as2k-bin"
-    [ ! -f "$BACKUP/as2k_ui.py" ] || sudo -n cp -p "$BACKUP/as2k_ui.py" "$INST/frontend/as2k_ui.py"
+    rollback
     fail "Install failed; core and GTK restored"
 fi
-"$PREFIX/libexec/as2k/as2k-bin" -validate || fail "Installed core validate"
-python3 -m py_compile "$INST/frontend/as2k_ui.py" || fail "Installed GTK syntax"
+if ! "$PREFIX/libexec/as2k/as2k-bin" -validate || ! python3 -m py_compile "$INST/frontend/as2k_ui.py"; then
+    rollback
+    fail "Installed validation failed; core and GTK restored"
+fi
 say "INSTALLED_PASS_GUI_FUNCTIONAL_PENDING"
