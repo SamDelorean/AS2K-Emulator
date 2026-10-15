@@ -23,10 +23,10 @@ def main():
     if "as2k_direct_dictrom_entry" in h or "as2k_direct_dictrom_entry" in c:
         raise SystemExit("Refuse double patch")
     h = once(h,
-        "\tauto instruction_callback() { return m_instruction_cb.bind(); }",
-        "\tauto instruction_callback() { return m_instruction_cb.bind(); }\n"
+        "\tvoid set_default_config(uint8_t data) { assert(!configured()); m_config = data & m_config_mask; }",
         "\t// DIAG-proven post-reset direct DictROM entry.\n"
-        "\tvoid as2k_direct_dictrom_entry(uint16_t pc);",
+        "\tvoid as2k_direct_dictrom_entry(uint16_t pc);\n"
+        "\tvoid set_default_config(uint8_t data) { assert(!configured()); m_config = data & m_config_mask; }",
         "public entry")
     c = once(c,
         "void mc68hc11_cpu_device::execute_set_input(int inputnum, int state)",
