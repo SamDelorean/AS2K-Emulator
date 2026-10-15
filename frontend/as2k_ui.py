@@ -60,6 +60,8 @@ class AS2KWindow(Gtk.ApplicationWindow):
         self.payload_path: Optional[Path] = None
         self.pending_payload_path: Optional[Path] = None
         self.pending_boot_clear = False
+        self.boot_request_number = 0
+        self.pending_boot_request: Optional[str] = None
         self.firmware_path: Optional[Path] = None
         self.dictrom_path: Optional[Path] = None
         self.send_capture = bytearray()
@@ -377,21 +379,24 @@ class AS2KWindow(Gtk.ApplicationWindow):
         kind = parts[0]
         if kind == "STATUS" and len(parts) >= 2:
             message = parts[1]
-            if self.pending_payload_path is not None:
-                if message == "External bootstrap selected":
-                    self.payload_path = self.pending_payload_path
-                    self.payload_name = "EXTERNAL"
-                    self.pending_payload_path = None
-                    self._update_header()
-                elif message == "Invalid external bootstrap image":
-                    self.pending_payload_path = None
-            if message == "Stock firmware reset selected":
-                self.pending_boot_clear = False
+            self.status.set_text(message)
+            return
+        if kind == "BOOT_ACK" and len(parts) == 3:
+            request, result = parts[1], parts[2]
+            if request != self.pending_boot_request:
+                return
+            if result == "ACTIVE" and self.pending_payload_path is not None:
+                self.payload_path = self.pending_payload_path
+                self.payload_name = "EXTERNAL"
+            elif result == "STOCK" and self.pending_boot_clear:
                 self.payload_name = "STOCK"
                 self.payload_path = None
-                self.pending_payload_path = None
-                self._update_header()
-            self.status.set_text(message)
+            elif result != "INVALID":
+                return
+            self.pending_payload_path = None
+            self.pending_boot_clear = False
+            self.pending_boot_request = None
+            self._update_header()
             return
         if kind == "SEND_READY" and len(parts) >= 2:
             path = Path(parts[1])
@@ -563,7 +568,10 @@ class AS2KWindow(Gtk.ApplicationWindow):
         if self.pending_payload_path is not None or self.pending_boot_clear:
             self._error("Carga en curso", "Espere la respuesta del núcleo antes de seleccionar otro payload")
             return
-        if self._send_control(f"BOOTSTRAP_FILE {path}"):
+        self.boot_request_number += 1
+        request = str(self.boot_request_number)
+        if self._send_control(f"BOOTSTRAP_FILE REQ:{request} {path}"):
+            self.pending_boot_request = request
             self.pending_payload_path = path
             self.status.set_text("ROM payload enviada; esperando confirmación del núcleo")
 
@@ -571,7 +579,10 @@ class AS2KWindow(Gtk.ApplicationWindow):
         if self.pending_payload_path is not None or self.pending_boot_clear:
             self._error("Cambio en curso", "Espere la confirmación del núcleo")
             return
-        if self._send_control("BOOTSTRAP CLEAR"):
+        self.boot_request_number += 1
+        request = str(self.boot_request_number)
+        if self._send_control(f"BOOTSTRAP CLEAR {request}"):
+            self.pending_boot_request = request
             self.pending_boot_clear = True
             self.status.set_text("Arranque normal solicitado; esperando confirmación del núcleo")
 
