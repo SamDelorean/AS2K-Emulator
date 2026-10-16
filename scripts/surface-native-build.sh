@@ -52,17 +52,59 @@ export USE_QTDEBUG=0
 export NOWERROR=1
 export OPTIMIZE=1
 export REGENIE=1
+# Build only through a minimal work overlay. Leave the pinned Git checkout
+# untouched, and store restore snapshots on persistent ext4 (not volatile /tmp).
+# The original MAME builder's trap executes restore on BOTH TERM and EXIT,
+# which causes a second restore after the scratch directory is removed.
+STEP=SAFE_OVERLAY
+OVERLAY="$WORK/build-overlay"
+mkdir -p "$OVERLAY/scripts" "$OVERLAY/src/mame/skeleton" "$OVERLAY/out" "$WORK/tmp" "$AS2K/out"
+cp "$AS2K/src/mame/skeleton/alphasma.cpp" "$OVERLAY/src/mame/skeleton/alphasma.cpp"
+cp "$AS2K/scripts/patch-mc68hc11-pai.py" "$OVERLAY/scripts/"
+cp "$AS2K/scripts/patch-mc68hc11-bootstrap.py" "$OVERLAY/scripts/"
+export AS2K_SAFE_TMPDIR="$WORK/tmp"
+python3 -B - "$AS2K/scripts/build-stable-core.sh" "$OVERLAY/scripts/build-stable-core.sh" <<'PY'
+from pathlib import Path
+import sys
+src = Path(sys.argv[1]).read_text(encoding="utf-8")
+replacements = (
+    (
+        "TMP_DIR=$(mktemp -d)",
+        'TMP_DIR=$(mktemp -d "$AS2K_SAFE_TMPDIR/restore.XXXXXXXX")',
+    ),
+    (
+        "trap restore EXIT HUP INT TERM",
+        "trap restore EXIT\ntrap 'exit 129' HUP\ntrap 'exit 130' INT\ntrap 'exit 143' TERM",
+    ),
+)
+for old, new in replacements:
+    if src.count(old) != 1:
+        raise SystemExit("BLOCKED: unrecognized pinned MAME builder layout")
+    src = src.replace(old, new, 1)
+Path(sys.argv[2]).write_text(src, encoding="utf-8")
+PY
+sh -n "$OVERLAY/scripts/build-stable-core.sh"
+
 STEP=BUILD
-echo "NATIVE_BUILD_START ARMv7 J=1 $(date -u)"
-sh "$AS2K/scripts/build-stable-core.sh" "$MAME" 1
+echo "NATIVE_BUILD_RESUME ARMv7 J=1 $(date -u) objects retained"
+sh "$OVERLAY/scripts/build-stable-core.sh" "$MAME" 1
 STEP=VERIFY
-BIN="$AS2K/out/as2k-bin"
+BIN="$OVERLAY/out/as2k-bin"
 [ -x "$BIN" ] || { echo "FAIL: compiled executable missing"; exit 4; }
 file "$BIN" | grep -Eq 'ELF 32-bit.*ARM' ||
     { echo "FAIL: not ARMv7 ELF"; exit 4; }
 readelf -h "$BIN" | grep -Eq 'Machine:.*ARM' ||
     { echo "FAIL: non-ARM target"; exit 4; }
 # build-stable-core.sh already executes ./as2k -validate on native Surface.
+
+# Only publish a verified binary to the exact pinned tree's out/ folder;
+# do not touch any system installation.
+FINAL="$AS2K/out/as2k-bin"
+TMPBIN=$(mktemp "$AS2K/out/.as2k-bin-stage.XXXXXXXX")
+cp "$BIN" "$TMPBIN"
+chmod 0755 "$TMPBIN"
+mv -f "$TMPBIN" "$FINAL"
+
 STEP=READY
-echo "NATIVE_BUILD_PASS $BIN"
+echo "NATIVE_BUILD_PASS $FINAL"
 echo "NOT_INSTALLED; run surface-native-install.sh only after approval"
