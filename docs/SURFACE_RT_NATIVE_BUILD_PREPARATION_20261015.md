@@ -63,3 +63,17 @@ La primera consulta consolidada real de Surface confirmó arquitectura, paquetes
 - No se descargaron fuentes privadas ni se compiló o instaló AS2K.
 - Una primera comprobación de versión postmarketOS falló por formato entrecomillado en `/etc/os-release`; fue corregida en GitHub (`551d200db06ca925e985c2ec2d3020c59b191278`) antes del resultado PASS. Este tipo de error debe detectarse estáticamente en futuras preparaciones.
 - Pendiente: transferencia/obtención verificada de las fuentes pinneadas y posterior compilación nativa `J=1`, **sólo mediante instrucción del usuario**. No usar T640 ni cruzada.
+
+
+## Continuidad — fuentes verificadas y lanzamiento de compilación
+
+- Consulta consolidada en Surface: `status/sources.status = PASS SOURCES_PINNED`.
+- AS2K exactamente `36996b91053969661371dc067d49026fab367a47`.
+- MAME exactamente `1dc2180181a3b1a21e8761ae40b50a9f55ac4a5b`.
+- Ambos repositorios residen únicamente en el área privada de trabajo de la Surface: `/home/user/Projects/alphasmart/as2k-surf-native/sources/`.
+- Se incorporó y desplegó `scripts/surface-native-run-after-sources.sh`, sintaxis shell verificada, SHA-256 desplegado: `618f397a3d3945285bebcf4c6478547b6a6cd5de6f663790d2137ad9cb9d2a22`.
+- Se lanzó desatendido como PID inicial `11076`. Si no hay errores de validación, invoca el constructor nativo `surface-native-build.sh` con `J=1`.
+- Archivos para consulta posterior **agrupada** de Commander: `status/native-build-run.status`, `status/build.status`, `logs/native-build-runner.log`, `logs/native-build.log`.
+- **No afirmar PASS de compilación sin comprobar `status/build.status = PASS STEP=READY` y `status/native-build-run.status = PASS NATIVE_BUILD_COMPLETE`.**
+- No hay instalación automática; `surface-native-install.sh` permanece separado y sin ejecutar.
+- No ejecutar consultas repetitivas de progreso. Usar una siguiente lectura consolidada de estado y errores si el usuario pide continuidad.
