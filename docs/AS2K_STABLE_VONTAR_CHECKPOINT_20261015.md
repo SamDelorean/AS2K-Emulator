@@ -80,3 +80,29 @@ Además, la implementación GTK actual sí hace excluyentes «PC conectado» e �
 **Seguridad arquitectónica:** conservar el criterio previamente acordado de transferencia a DictROM a través de payload/bootstrap; la mención de un rótulo «arranque directo» no autoriza introducir un salto directo que eluda el bootstrap.
 
 No se ha utilizado Commander ni realizado ningún cambio de código o instalación para esta toma de requisitos.
+
+
+## Observación adicional — documentos stock no persistentes
+
+**Estado: incidencia documentada, corrección aún NO implementada.** El usuario reporta que el texto de documentos escritos en la ROM stock desaparece al cerrar la ventana y volver a abrir el emulador. La expectativa es preservar el contenido entre sesiones, como en el AlphaSmart real.
+
+### Evidencia estática
+
+- `packaging/as2k-launcher.sh` pasa `-nvram_directory "$AS2K_DATA/nvram"` al núcleo, pero el `cleanup()` ejecuta `kill "$CORE_PID"` al finalizar el proceso `python3 "$AS2K_UI"`, sin solicitar salida ordenada al núcleo.
+- `src/mame/skeleton/alphasma.cpp` registra `NVRAM(config, "nvram", nvram_device::DEFAULT_ALL_0)` y la RAM bancaria compartida `m_nvram_base` (`0x20000` bytes), con banco RAM configurado en `machine_start()`.
+- En MAME `src/emu/machine.cpp` (`SamDelorean/mame-as3k`), `running_machine::nvram_load()` corre en el arranque; `running_machine::nvram_save()` se ejecuta al salir normalmente del bucle de máquina, condicionado a `options().nvram_save()`. La terminación directa por señal puede saltarse esta ruta.
+- El comando `ui_process_command()` actual implementa `MACHINE RESET` pero **no** una operación equivalente a `MACHINE EXIT` / `schedule_exit()`.
+
+### Hipótesis prioritaria
+
+El cierre abrupto del proceso emulador por el lanzador impide guardar la NVRAM en disco. Es una hipótesis **altamente sustentada por análisis estático**, aún no confirmada con una prueba controlada de persistencia ni inspección del archivo `.nv` existente. No afirmar que la información perdida se puede recuperar.
+
+### Plan incremental propuesto (sin acciones en VONTAR sin autorización)
+
+1. Inspeccionar en modo sólo lectura la existencia/tamaño de la NVRAM ya guardada antes de intervenir; nunca sobrescribirla ni inicializarla.
+2. Añadir un comando de salida ordenada al puente C++ de Stable que invoque `machine().schedule_exit()`.
+3. Hacer que el cierre del frontend solicite esa salida; adaptar el lanzador para esperar la terminación limpia y reservar una terminación forzada sólo como recuperación extraordinaria documentada.
+4. Integrar una prueba **mínima** de stock: introducir texto identificable, cerrar normalmente, comprobar archivo NVRAM y reabrir para verificar texto intacto. No repetir pruebas de DIAG.
+5. Mantener instalación funcional y respaldos; entrega en rama/SH reversible con `J=3`, sólo después de autorización expresa.
+
+**No hay modificación de núcleo, GTK, lanzador ni archivos NVRAM en este registro.**
