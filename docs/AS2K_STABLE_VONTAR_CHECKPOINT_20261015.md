@@ -121,3 +121,12 @@ El cierre abrupto del proceso emulador por el lanzador impide guardar la NVRAM e
 - La hipótesis técnica sobre salida ordenada de MAME está consignada arriba, **sin diagnóstico de campo definitivo**.
 
 **Directriz actual:** continuar únicamente anotando observaciones. La resolución, priorización, diseño y ejecución se abordarán en una etapa posterior por indicación expresa del usuario.
+
+## Observación de menú Configuración — 2026-10-15
+
+**Sólo registrar, sin implementar hasta nueva autorización.**
+
+- Eliminar del menú **Configuración** la opción **«Configurar ROM, DRM y arranque»** (nombre según la descripción del usuario; confirmar etiqueta exacta antes de modificar el código).
+- Motivo: el usuario la considera redundante o innecesaria.
+- **No eliminar** las funciones subyacentes de selección de ROM, DictROM o bootstrap ni otras entradas de Configuración; únicamente la opción indicada, cuando se autorice implementar.
+- Se mantiene la regla vigente: acumular observaciones; no tocar la instalación ni utilizar Commander.
