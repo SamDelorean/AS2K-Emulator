@@ -77,3 +77,15 @@ La primera consulta consolidada real de Surface confirmó arquitectura, paquetes
 - **No afirmar PASS de compilación sin comprobar `status/build.status = PASS STEP=READY` y `status/native-build-run.status = PASS NATIVE_BUILD_COMPLETE`.**
 - No hay instalación automática; `surface-native-install.sh` permanece separado y sin ejecutar.
 - No ejecutar consultas repetitivas de progreso. Usar una siguiente lectura consolidada de estado y errores si el usuario pide continuidad.
+
+## Incremento de recuperación — 2026-10-16
+
+**Primera compilación:** `sources.status=PASS SOURCES_PINNED`, `native-build-run.status=RUNNING STEP=NATIVE_COMPILE` quedó obsoleto cuando el proceso terminó por señal externa. `build.status` no apareció y no existe `out/as2k-bin`. En `logs/native-build.log` constan `luaengine.o ... Terminated` y, al salir, `cp: can't stat '/tmp/tmp.ALPPhC/alphasma.cpp'`.
+
+**Auditoría sólo lectura:** postmarketOS llevaba más de 1 día encendido (sin reinicio durante la compilación); ambos `git status --short --untracked-files=no` estaban limpios, incluidos los cuatro archivos donor parcheados temporalmente. No hubo evidencia de errores del compilador anteriores a la terminación ni OOM visible en dmesg accesible. **No se ha determinado qué proceso emitió SIGTERM.** El error de copia se explica por el `trap restore EXIT HUP INT TERM` original, que puede ejecutar dos veces el mismo `restore` al recibir TERM y después EXIT.
+
+**Corrección del flujo (no del emulador):** `scripts/surface-native-build.sh` en commit `4d3a711cd6c3be4e2763e5b0ce6a200a6687f4d0` construye un overlay mínimo bajo `as2k-surf-native/build-overlay`, reconstruye el mismo constructor de MAME desde las fuentes pinneadas, pero con snapshots `mktemp` en eMMC `as2k-surf-native/tmp` y un solo `trap restore EXIT` (HUP, INT, TERM emiten códigos de salida distintos). No se edita la revisión Git pinneada de AS2K; los objetos de compilación parciales ya generados en MAME se conservan para reanudar incrementalmente; `J=1`.
+
+**Reinicio desatendido:** Se instaló el SH corregido y pasó `sh -n`; SHA-256 desplegado `4c992f45d9567ed9a22532347bc0f7b891c5bac7fd6cef90ff612b616626756a`. Tras confirmar los dos commits y ambos árboles Git limpios, se archivó el lock obsoleto del proceso detenido y se inició una nueva ejecución aislada con `setsid`, PID inicial `5998`. No se ha consultado aún el resultado final. Informe futuro en `status/native-build-run.status`, `status/build.status` y `logs/native-build.log`.
+
+**Límite:** `PASS` de compilación sólo cuando ambos archivos de estado lo confirmen y el ELF ARMv7 exista y haya pasado `-validate`. No se instaló AS2K ni se copiaron ROM/DictROM/NVRAM. No realizar polling continuo por Commander.
