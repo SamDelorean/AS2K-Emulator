@@ -17,7 +17,8 @@ sudo -n true || fail "Noninteractive sudo unavailable"
 case "$JOBS" in ''|*[!0-9]*|0) fail "Invalid AS2K_JOBS" ;; esac
 SOURCE=$(cd "$SOURCE" && pwd)
 MAME=$(cd "$MAME" && pwd)
-[ -z "$(git -C "$SOURCE" status --porcelain)" ] || fail "Source checkout has local modifications"
+# The existing source checkout may contain preserved local work.
+# Read only Git objects; never checkout, reset, clean, clone, or modify its index.
 if ! git -C "$SOURCE" cat-file -e "$REF^{commit}" 2>/dev/null; then
     git -C "$SOURCE" fetch --no-tags origin feature/stable-payload-auto-boot-b3-20261015 ||
         fail "Unable to fetch approved branch"
@@ -36,7 +37,7 @@ rollback(){
 }
 cleanup(){ rm -rf "$WORK"; }
 trap cleanup EXIT HUP INT TERM
-git -C "$SOURCE" archive "$REF" | tar -x -C "$WORK/src"
+git -C "$SOURCE" archive "$REF" | tar -x -C "$WORK/src" || fail "Pinned revision archive extraction failed"
 say "SOURCE_PIN=$REF"
 sh -n "$WORK/src/scripts/build-stable-core.sh" || fail "Shell syntax"
 python3 -m py_compile "$WORK/src/frontend/as2k_ui.py" || fail "GTK Python syntax"
