@@ -50,3 +50,33 @@ Los cuatro archivos se guardaron y se verificaron por SHA-256 en la VONTAR. **No
 4. **No repetir las pruebas ya validadas en DIAG** si no cambia su componente ni su contrato.
 5. **No tocar archivos personales ni ROMs/DictROM**; no modificar instalaciones o menús fuera del alcance solicitado.
 6. Al recibir observaciones de menús, contrastar esta baseline antes de planear el cambio; registrar hallazgos y nuevos commits sin asumir que una observación autoriza una intervención en la VONTAR.
+
+## Observaciones de menús — 2026-10-15 (usuario)
+
+**Estado: RECOGIDAS; cambios NO aplicados.** Preservar baseline funcional de VONTAR y esperar autorización específica para implementar.
+
+### Archivo
+
+- **Eliminar** las dos opciones finales descritas en la interfaz observada como **«Abrir ROM bootstrap»** y **«Usar ROM bootstrap al arrancar»**. Motivo: funciones redundantes.
+- No eliminar el mecanismo de bootstrap en sí ni otras opciones no mencionadas.
+
+### Máquina
+
+- **Conservar** «Reiniciar el firmware».
+- **Conservar** las banderas «PC conectado», «Impresora conectada» e «Infrarrojo activo».
+- **Regla solicitada:** «PC conectado» e «Infrarrojo activo» deben ser mutuamente excluyentes, en ambos sentidos. Al activar PC, apagar IR; al activar IR, apagar PC. Las banderas deben reflejar fielmente el estado final.
+- «Impresora conectada»: **sin decisión todavía** sobre exclusividad o compatibilidad. No modificar su interacción más allá de lo autorizado.
+- **Conservar por ahora** el menú descrito como **«Bootstrap / inicio»**, con las alternativas «Arranque normal (stock)» y «Arranque directo desde DictROM» (rotulación exacta pendiente de contrastar con la interfaz visible).
+- **Conservar por ahora** «Aplicar ROM bootstrap y reiniciar núcleo».
+
+### Discrepancia de interfaz por reconciliar antes de cambiar código
+
+La versión GTK **fijada e instalada** `36996b91053969661371dc067d49026fab367a47`, archivo `frontend/as2k_ui.py`, exhibe en fuente «Archivo → Bootstrap → Abrir ROM payload… / Ninguno (arranque normal)» y en Máquina «Reiniciar AlphaSmart / PC conectado / Impresora conectada / Infrarrojo activo». En **ese código** no aparecen literalmente las dos opciones finales de Archivo descritas por el usuario, ni el menú «Bootstrap / inicio» de Máquina ni «Aplicar ROM bootstrap y reiniciar núcleo».
+
+**Por tanto, no aplicar eliminaciones por coincidencia aproximada** sobre la rama instalada: primero identificar qué UI/menú está viendo realmente el usuario (quizá menú interno del núcleo o variante distinta). Confirmar las etiquetas y sus handlers antes de proponer diff. No inventar que ya fue corregido.
+
+Además, la implementación GTK actual sí hace excluyentes «PC conectado» e «Impresora conectada», pero **no** establece exclusividad PC ↔ IR. La impresora queda pendiente de política expresa, así que no cambiar esa regla por inferencia.
+
+**Seguridad arquitectónica:** conservar el criterio previamente acordado de transferencia a DictROM a través de payload/bootstrap; la mención de un rótulo «arranque directo» no autoriza introducir un salto directo que eluda el bootstrap.
+
+No se ha utilizado Commander ni realizado ningún cambio de código o instalación para esta toma de requisitos.
