@@ -148,3 +148,16 @@ El cierre abrupto del proceso emulador por el lanzador impide guardar la NVRAM e
 - Este comando activará una **pantalla de mapa de memoria**.
 - Quedan pendientes el diseño de la pantalla, el alcance del mapa, su navegación y el comportamiento concreto de ambos modificadores según plataforma.
 - No modificar código, compilación ni instalación de AS2K Stable por esta observación.
+
+
+## Observación pendiente — Debugger: interfaz integrada de mapa y contenidos
+
+**Especificación preliminar, sin implementación autorizada.**
+
+- Rediseñar la **interfaz de Debugger** para integrar en una sola vista el mapa de memoria y el monitor/visor de contenidos existente.
+- Acceso por **Cmd+M o Ctrl+M** conforme al requisito ya registrado.
+- Presentación secuencial por **regiones reales de memoria**. Ejemplo conceptual del usuario: encabezado `IRAM`, direcciones `00–08` con el resto del panel actual, continuación de direcciones y contenido hasta el fin de IRAM; encabezado `RAM externa`, direcciones y contenidos ya disponibles, y continuar así para las demás regiones.
+- **No inferir** que `00–08` sea el límite real de IRAM, ni inventar rangos; recuperar y validar el mapa HC11/AS2K antes de fijar encabezados, límites, bancos y zonas reservadas.
+- Preservar la funcionalidad y los datos del panel de depuración actual; integrar la navegación por regiones, sin duplicar ni sustituir funciones hasta definir el diseño.
+- Pendiente: diseño visual exacto, criterios de lectura/actualización, desplazamiento, bancos, direcciones inaccesibles, regiones ROM y distinción entre memoria real y reservada.
+- No cambiar código, emuladores, firmware, scripts de compilación o instalaciones como consecuencia de esta anotación.
