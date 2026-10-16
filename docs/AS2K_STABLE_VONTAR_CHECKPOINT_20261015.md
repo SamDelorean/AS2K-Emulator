@@ -161,3 +161,15 @@ El cierre abrupto del proceso emulador por el lanzador impide guardar la NVRAM e
 - Preservar la funcionalidad y los datos del panel de depuración actual; integrar la navegación por regiones, sin duplicar ni sustituir funciones hasta definir el diseño.
 - Pendiente: diseño visual exacto, criterios de lectura/actualización, desplazamiento, bancos, direcciones inaccesibles, regiones ROM y distinción entre memoria real y reservada.
 - No cambiar código, emuladores, firmware, scripts de compilación o instalaciones como consecuencia de esta anotación.
+
+
+## Observación pendiente — Debugger: recuperar última línea de visualización
+
+**Propuesta de interfaz para analizar; no ejecutar cambios todavía.**
+
+- La última línea de la pantalla de **Debugger** actualmente muestra instrucciones de navegación y reduce el espacio útil del monitor/mapa de memoria.
+- Evaluar **retirar esa línea de instrucciones** de la vista principal para recuperar una fila completa de visualización.
+- Mantener las instrucciones de navegación accesibles mediante el menú de ayuda **Cmd+H**, en consonancia con el resto de aplicaciones.
+- Comprobar durante el diseño que Cmd+H cubra los atajos y acciones realmente disponibles y que retirar la línea no impida descubrir controles esenciales.
+- Integrar esta evaluación con el rediseño pendiente de Debugger y la pantalla de mapa de memoria **Cmd+M / Ctrl+M**; no tratarlo como un cambio aislado.
+- Sin cambios de código, ROM, instalación ni emuladores por esta anotación.
