@@ -58,7 +58,17 @@ if ! sudo -n install -m 0755 "$WORK/src/out/as2k-bin" "$INST/as2k-bin" ||
     rollback
     fail "Install failed; core and GTK restored"
 fi
-if ! "$PREFIX/libexec/as2k/as2k-bin" -validate || ! python3 -m py_compile "$INST/frontend/as2k_ui.py"; then
+# Syntax-only verification. /usr/local is root-owned; py_compile would attempt
+# to create frontend/__pycache__ and fail despite a valid installed GTK file.
+if ! "$PREFIX/libexec/as2k/as2k-bin" -validate ||
+   ! python3 - "$INST/frontend/as2k_ui.py" <<'PYTHON_SYNTAX'
+import pathlib
+import sys
+
+source = pathlib.Path(sys.argv[1])
+compile(source.read_bytes(), str(source), "exec")
+PYTHON_SYNTAX
+then
     rollback
     fail "Installed validation failed; core and GTK restored"
 fi
