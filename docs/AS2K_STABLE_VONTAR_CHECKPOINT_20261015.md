@@ -139,3 +139,12 @@ El cierre abrupto del proceso emulador por el lanzador impide guardar la NVRAM e
 - Queda pendiente decidir qué información y presentación tendrá la opción **Ayuda → Acerca de AS2K Emulator** (el usuario se refirió oralmente a «AFX2K emulador»; el nombre definitivo y la rotulación deberán confirmarse cuando se diseñe).
 - No proponer aún texto final, créditos, licencia, datos de versión ni otros elementos sin revisar previamente las preferencias del usuario y la información pertinente del proyecto.
 - **No modificar menús ni instalación**; mantener esta observación abierta hasta que el usuario solicite la fase de diseño e implementación.
+
+## Observación pendiente — Debug: mapa de memoria (Cmd+M / Ctrl+M)
+
+**Sólo registro de requisito; no implementar todavía.**
+
+- En la aplicación **Debug**, incorporar el acceso mediante **Cmd+M** o **Ctrl+M**, en concordancia con las convenciones de atajos del resto de aplicaciones.
+- Este comando activará una **pantalla de mapa de memoria**.
+- Quedan pendientes el diseño de la pantalla, el alcance del mapa, su navegación y el comportamiento concreto de ambos modificadores según plataforma.
+- No modificar código, compilación ni instalación de AS2K Stable por esta observación.
