@@ -106,3 +106,18 @@ El cierre abrupto del proceso emulador por el lanzador impide guardar la NVRAM e
 5. Mantener instalación funcional y respaldos; entrega en rama/SH reversible con `J=3`, sólo después de autorización expresa.
 
 **No hay modificación de núcleo, GTK, lanzador ni archivos NVRAM en este registro.**
+
+
+## Preferencias pendientes — selección y restauración de NVRAM
+
+**Observaciones del usuario; SOLO REGISTRO, SIN IMPLEMENTACIÓN.** No resolver ni investigar más estos detalles del emulador hasta que el usuario solicite retomar el trabajo.
+
+- El contenido de los documentos elaborados con **ROM stock** debe persistir al cerrar y abrir el emulador; debe restaurarse automáticamente, como memoria respaldada por batería.
+- Si existe una NVRAM **configurada explícitamente**, debe respetarse y recordarse como el archivo en uso.
+- Si **no hay ninguna NVRAM configurada**, preferir la **última NVRAM utilizada** y abrirla automáticamente al iniciar, cuando exista; no asumir una nueva NVRAM vacía.
+- Como mejora deseable, permitir **seleccionar manualmente un archivo NVRAM**, de manera análoga a «Abrir ROM», y conservar la selección para sesiones posteriores.
+- Conservar la entrada existente de Configuración para abrir la carpeta NVRAM.
+- Esto es un requisito de comportamiento y UX, no una autorización para crear/modificar archivos NVRAM, alterar el lanzador, recompilar, reiniciar el núcleo ni ejecutar pruebas.
+- La hipótesis técnica sobre salida ordenada de MAME está consignada arriba, **sin diagnóstico de campo definitivo**.
+
+**Directriz actual:** continuar únicamente anotando observaciones. La resolución, priorización, diseño y ejecución se abordarán en una etapa posterior por indicación expresa del usuario.
