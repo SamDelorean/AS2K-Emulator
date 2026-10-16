@@ -52,3 +52,14 @@ La preparación inicial puede distribuirse como un SH independiente por Commande
 ## Evidencia y consumos de Commander
 
 La primera consulta consolidada real de Surface confirmó arquitectura, paquetes, RAM/zram, eMMC, ausencia de USB, estado administrativo y directorios. Fases siguientes: una llamada para instalar/verificar entorno y depositar scripts; otra consulta sólo si el job permanece RUNNING o presenta FAIL. No desperdiciar llamadas en polling repetido.
+
+
+## Resultado real de preparación — Surface RT
+
+- **`environment.status: PASS STEP=READY`** en `/home/user/Projects/alphasmart/as2k-surf-native/status/environment.status`.
+- Registro: `/home/user/Projects/alphasmart/as2k-surf-native/logs/environment-prepare.log`, confirma `PACKAGE_REUSE_PASS: all build dependencies already installed` y `ENVIRONMENT_PASS ARMv7-native postmarketOS-v26.06`.
+- Se depositaron y validaron sintácticamente los cuatro scripts en `/home/user/Projects/alphasmart/as2k-surf-native/scripts/`.
+- Se comprobó que GTK3, SDL2 y SDL2_ttf, Fontconfig y X11 de desarrollo ya están instalados; **no hubo necesidad de instalar paquetes adicionales**.
+- No se descargaron fuentes privadas ni se compiló o instaló AS2K.
+- Una primera comprobación de versión postmarketOS falló por formato entrecomillado en `/etc/os-release`; fue corregida en GitHub (`551d200db06ca925e985c2ec2d3020c59b191278`) antes del resultado PASS. Este tipo de error debe detectarse estáticamente en futuras preparaciones.
+- Pendiente: transferencia/obtención verificada de las fuentes pinneadas y posterior compilación nativa `J=1`, **sólo mediante instrucción del usuario**. No usar T640 ni cruzada.
