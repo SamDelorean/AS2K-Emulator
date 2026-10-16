@@ -130,3 +130,12 @@ El cierre abrupto del proceso emulador por el lanzador impide guardar la NVRAM e
 - Motivo: el usuario la considera redundante o innecesaria.
 - **No eliminar** las funciones subyacentes de selección de ROM, DictROM o bootstrap ni otras entradas de Configuración; únicamente la opción indicada, cuando se autorice implementar.
 - Se mantiene la regla vigente: acumular observaciones; no tocar la instalación ni utilizar Commander.
+
+
+## Pendiente — contenido de «Acerca de AS2K Emulator»
+
+**Sólo anotación; definición posterior con el usuario.**
+
+- Queda pendiente decidir qué información y presentación tendrá la opción **Ayuda → Acerca de AS2K Emulator** (el usuario se refirió oralmente a «AFX2K emulador»; el nombre definitivo y la rotulación deberán confirmarse cuando se diseñe).
+- No proponer aún texto final, créditos, licencia, datos de versión ni otros elementos sin revisar previamente las preferencias del usuario y la información pertinente del proyecto.
+- **No modificar menús ni instalación**; mantener esta observación abierta hasta que el usuario solicite la fase de diseño e implementación.
