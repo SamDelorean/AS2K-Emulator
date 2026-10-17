@@ -53,8 +53,18 @@ finish() {
     else printf 'FAIL EXIT=%s STEP=%s\n' "$rc" "$STEP" > "$WORK/status/install.status"; fi
 }
 trap finish EXIT
+# Create only missing installation directories with explicit traverse permissions.
+# BusyBox install -d under umask 077 otherwise creates /usr/local/libexec
+# without search permission for the normal desktop user.
+for directory in "$PREFIX/libexec" "$PREFIX/libexec/as2k" "$PREFIX/libexec/as2k/frontend" "$PREFIX/bin" "$PREFIX/share" "$PREFIX/share/applications"; do
+    [ ! -L "$directory" ] || { echo "BLOCKED: symlink directory: $directory"; exit 3; }
+    if [ ! -d "$directory" ]; then
+        [ ! -e "$directory" ] || { echo "BLOCKED: non-directory destination: $directory"; exit 3; }
+        sudo -n install -d -m 0755 "$directory"
+    fi
+    [ -x "$directory" ] || { echo "BLOCKED: inaccessible destination directory: $directory"; exit 3; }
+done
 for relative in $RELFILES; do
-    sudo -n install -d "$PREFIX/$(dirname "$relative")"
     mode=0755
     case "$relative" in
         *.desktop|*.txt) mode=0644 ;;
