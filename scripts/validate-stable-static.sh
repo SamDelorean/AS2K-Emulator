@@ -54,14 +54,27 @@ grep -F '@PREFIX@/bin/as2k' "$ROOT/packaging/as2k.desktop.in" >/dev/null \
 
 for required in \
     "$ROOT/frontend/as2k_ui.py" \
+    "$ROOT/frontend/as2k_session.py" \
     "$ROOT/frontend/as2k_pcl_to_pdf.py" \
     "$ROOT/frontend/alphasmart_2000_shortcuts.txt"
 do
     [ -s "$required" ] || fail "missing installed frontend resource: $required"
 done
 
-grep -F 'python3 "$AS2K_UI"' "$ROOT/packaging/as2k-launcher.sh" >/dev/null \
-    || fail "stable launcher does not start GTK frontend"
+[ -s "$ROOT/frontend/as2k_session.py" ] || fail "VONTAR session manager missing"
+python3 -B - "$ROOT/frontend/as2k_session.py" <<'PY_SESSION_SYNTAX'
+import pathlib, sys
+source = pathlib.Path(sys.argv[1])
+compile(source.read_bytes(), str(source), 'exec')
+PY_SESSION_SYNTAX
+grep -F 'exec python3 /usr/local/libexec/as2k/frontend/as2k_session.py "$@"' "$ROOT/packaging/as2k-launcher.sh" >/dev/null \
+    || fail "VONTAR stable launcher does not exec canonical session manager"
+grep -F 'class ManagedWindow(ui.AS2KWindow):' "$ROOT/frontend/as2k_session.py" >/dev/null \
+    || fail "VONTAR session UI extension missing"
+grep -F 'SDL_VIDEODRIVER' "$ROOT/frontend/as2k_session.py" >/dev/null \
+    || fail "VONTAR integrated display driver selection missing"
+grep -F 'def update_boot_cfg(self):' "$ROOT/frontend/as2k_session.py" >/dev/null \
+    || fail "VONTAR persistent boot mode support missing"
 grep -F 'KEYDOWN ' "$DRIVER" >/dev/null \
     || fail "ordinary keyboard bridge missing in core"
 grep -F 'key-press-event' "$ROOT/frontend/as2k_ui.py" >/dev/null \
