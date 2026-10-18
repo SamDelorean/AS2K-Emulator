@@ -15,6 +15,8 @@ fi
 
 BINARY=$1
 PREFIX=${2:-/usr/local}
+# Exact VONTAR session manager resolves program paths under /usr/local.
+[ "$PREFIX" = /usr/local ] || { echo "This VONTAR stable release requires PREFIX=/usr/local" >&2; exit 2; }
 
 if [ ! -f "$BINARY" ] || [ ! -x "$BINARY" ]; then
     echo "Not an executable file: $BINARY" >&2
@@ -31,6 +33,7 @@ APP_DIR="$PREFIX/share/applications"
 
 for required in \
     "$REPO_DIR/frontend/as2k_ui.py" \
+    "$REPO_DIR/frontend/as2k_session.py" \
     "$REPO_DIR/frontend/as2k_pcl_to_pdf.py" \
     "$REPO_DIR/frontend/alphasmart_2000_shortcuts.txt" \
     "$REPO_DIR/packaging/as2k-launcher.sh" \
@@ -42,6 +45,7 @@ done
 install -d "$LIBEXEC_DIR" "$FRONTEND_DIR" "$BIN_DIR" "$APP_DIR"
 install -m 0755 "$BINARY" "$LIBEXEC_DIR/as2k-bin"
 install -m 0755 "$REPO_DIR/frontend/as2k_ui.py" "$FRONTEND_DIR/as2k_ui.py"
+install -m 0755 "$REPO_DIR/frontend/as2k_session.py" "$FRONTEND_DIR/as2k_session.py"
 install -m 0755 "$REPO_DIR/frontend/as2k_pcl_to_pdf.py" "$FRONTEND_DIR/as2k_pcl_to_pdf.py"
 install -m 0644 "$REPO_DIR/frontend/alphasmart_2000_shortcuts.txt" "$FRONTEND_DIR/alphasmart_2000_shortcuts.txt"
 install -m 0755 "$REPO_DIR/packaging/as2k-launcher.sh" "$BIN_DIR/as2k"
@@ -59,6 +63,7 @@ echo "Installed AS2K Emulator:"
 echo "  command:   $BIN_DIR/as2k"
 echo "  core:      $LIBEXEC_DIR/as2k-bin"
 echo "  frontend:  $FRONTEND_DIR/as2k_ui.py"
+echo "  session:   $FRONTEND_DIR/as2k_session.py (VONTAR canonical)"
 echo "  menu:      $APP_DIR/as2k.desktop"
 echo
 echo "Configure user-supplied images as:"
