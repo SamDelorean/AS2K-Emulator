@@ -1,5 +1,7 @@
 # AS2K stable installation layout
 
+> **2026-10-18 VONTAR full Stable Public:** this document preserves the historical R0 installation contract. The actual installed and approved VONTAR reference also requires `frontend/as2k_session.py` and its 85-byte session launcher. For the authoritative public snapshot, installed SHA-256 manifest, accessories, user-data exclusions and supported `/usr/local` prefix, see [VONTAR Stable Public](VONTAR_STABLE_PUBLIC_20261018.md). The historical R0 status below does not describe this release.
+
 Status: **installation contract prepared; runtime build validation pending Commander/T160**
 
 ## System files
