@@ -2,36 +2,30 @@
 
 A compact, reproducible emulator for the AlphaSmart 2000, derived from the MAME emulation engine and focused on stable human testing and firmware development.
 
-## Status
+## Status — Stable Public (VONTAR X3, 2026-10-18)
 
-**R0 — stable source shaping and dependency-closure phase.**
+**Canonical public source snapshot:** [VONTAR full release manifest](docs/VONTAR_STABLE_PUBLIC_20261018.md).
 
-The first milestone is a dedicated `as2k` subtarget that:
+This frozen branch reproduces the currently approved VONTAR installation, **including its exact `as2k_session.py` manager, original launcher and existing user-facing accessories**. It is not the early reduced-core preparation build and not the later Surface RT port. The UI manager adds session-aware ROM/DictROM/bootstrap controls, integrated display, Workbench menus, and persistent local selections without bundling any proprietary ROM or payload.
 
-- builds independently from the full MAME target;
-- passes `-validate`;
-- boots a user-selected AlphaSmart 2000 firmware image;
-- uses v3.1.4 as the reference validation baseline without hard-wiring the emulator to that version;
-- preserves the validated keyboard, 40×4 LCD, NVRAM, PC Send and printing behaviour;
-- demonstrates the expected reduction in clean-build time, incremental-build time and disk use.
+The branch is public source, not a GitHub binary release: no proprietary firmware/DictROM or user NVRAM is shipped, and no precompiled AArch64 executable is attached. Full binary redistribution remains gated by licensing/provenance and corresponding-source checks.
 
-The first traceable AS2K driver donor has now been imported on the preparation branch `prep/as2k-stable-reduced-r0`. Stable source shaping is in progress there; `main` remains the release baseline until native compilation and runtime validation close R0.
+### VONTAR / Armbian ARM64 installation
 
-The preparation branch already removes fixed proprietary ROM-set declarations, exposes mandatory external Firmware and DictROM image devices, isolates stable mutable data/output, and contains the system-installation launcher/desktop scripts. Direct DictROM Bootstrap, stable printing completion and the reduced dependency closure remain build-gated work.
-
-## Surface RT / postmarketOS installation
-
-The intended personal installation path is a single visible shell script that compiles and
-installs locally on the target machine:
+On an **intentionally selected target** with a clean checkout and a supported Armbian/Debian system:
 
 ```sh
-sh install-as2k.sh
+git clone --branch release/vontar-stable-public-20261018 https://github.com/SamDelorean/AS2K-Emulator.git
+cd AS2K-Emulator
+sh install-as2k-vontar.sh --check
+sh install-as2k-vontar.sh --install
 ```
 
-It downloads shallow source trees, runs the existing reduced build/validation gate, installs
-the GTK frontend and launcher, and creates the application-menu/desktop entry. Firmware and
-DictROM remain user-supplied private files. See
-[docs/SURFACE_LOCAL_INSTALL.md](docs/SURFACE_LOCAL_INSTALL.md).
+The installer uses the reduced AS2K core and a pinned MAME donor, installs under `/usr/local`, includes the full GTK session manager, keyboard help and PCL/PDF printing helper, and leaves runtime ROMs/NVRAM private and outside the repo. It may install OS dependencies and build tools. See the [full inventory, checksums and qualifications](docs/VONTAR_STABLE_PUBLIC_20261018.md).
+
+### Surface RT
+
+Surface RT (ARMv7/postmarketOS) is a **separate port of the VONTAR reference**. Its toolchain and installed ELF are different. Do not substitute Surface build/install instructions for the frozen VONTAR source snapshot.
 
 ## Two functional variants
 
