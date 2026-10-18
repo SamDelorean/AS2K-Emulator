@@ -1,5 +1,18 @@
 # AS2K GTK front-end
 
+> **Frozen VONTAR Stable Public snapshot — 2026-10-18.** The exact public
+> application entrypoint is `/usr/local/bin/as2k` →
+> `frontend/as2k_session.py` → `frontend/as2k_ui.py` plus the installed
+> reduced MAME core. This file documents the underlying GTK UI.
+> `as2k_session.py` adds the ROM/DictROM/bootstrap session manager, persistent
+> local selections, integrated one-window mode and optional SDL mode, reset
+> orchestration, Workbench options and output/NVRAM folder menus. Those functions
+> must not be omitted from a VONTAR Stable distribution.
+>
+> See [VONTAR Stable Public manifest](../docs/VONTAR_STABLE_PUBLIC_20261018.md).
+> All external ROMs, payload binaries and user NVRAM remain separate.
+
+
 `as2k_ui.py` is the first implementation increment of the standalone AS2K Emulator identity.
 It is deliberately separated from MAME's generic UI. The MAME-derived core remains responsible
 for hardware semantics; the GTK front-end owns human-facing menus, status, file dialogs,
