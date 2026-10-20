@@ -88,3 +88,23 @@ Evidencias privadas, sin ROM:
 - [diagnóstico exacto stderr MAME](https://drive.google.com/file/d/1ZRkIun1TKy7Y7HSBU0QebB9y3AN6BBUq/view)
 
 **Estado de la instalación Vontar:** intacta. La rama pública congelada permanece intacta. `FULL_AS2K_PC_WAKE_DYNAMIC_PASS` **pendiente**.
+
+## CIERRE MÁS RECIENTE — reparación DIAG y prueba funcional real PASS (20-oct-2026)
+
+**Esta sección prevalece sobre el FAIL de arranque anterior:** `AS2K_DIAG_PC_WAKEUP_BUILD_PASS / IRQ_2_OF_2_PASS / FIRMWARE_PC_ATTACH_DETACH_VISUAL_PASS`. La falla `Input ports cannot be read at init time!` quedó corregida sin reconstruir MAME ni cambiar firmware, inicializando `m_diag_pc_last=false` en `machine_start()`. El timer de 10ms observa el estado real tras iniciar MAME.
+
+### Evidencia auténtica de la T640
+
+- **Una intervención agrupada** reparó la fuente local con verificación del SHA esperado `c83b6dd3f528827851680b8333a1e087be31dce956bddd98d6dea734fdb0a832`, realizó `make -j3` incremental únicamente en la copia canónica MAME-DIAG, verificó `-validate` y ejecutó el firmware AS2K v3.14 legítimo en `as2kdiag` (no Stable). Reutilizó las tres ROM privadas ya verificadas, NVRAM aislada.
+- **Ejecutable canónico actualizado, SHA-256** `9131ad29f52cabb5eb0fe5ee651ca02bf6f8b753e510ed5c52247bf0650caa14`, con copia de respaldo original `as2kdiag.before` intacta en la T. Árbol fuente local de MAME-DIAG `as2k-mame0289-dev@a4b99b1a700a1d70b93a798fe7833e4cae28c137`; sigue teniendo modificaciones locales independientes `AGENTS.md` y `src/osd/modules/debugger/none.cpp`, no alteradas ni revertidas.
+- **MAME real `exit 0`**; eventos de Lua `PC_ON_SET`, `PORT_ATTACHED_1`, `PC_OFF_SET`, `PORT_DETACHED_0`, `NO_KEY_INJECTION`, `OBSERVATION_COMPLETE`. Se mandó PC ON duplicado y OFF duplicado sin IRQ adicional: **exactamente dos** `AS2K_DIAG_PC_HOST_EDGE_WAKE_IRQ` (`attached=1` y `attached=0`), y no se inyectó ninguna tecla.
+- **Capturas LCD reales a 50 Hz, 240×36:**
+  - [ANTES, editor vacío con cursor](https://drive.google.com/file/d/1KUuE5ws30nGOI6hx91Wwjqrs5Cej1Zqe/view) SHA-256 `9ff82e663729507bff00730c4f0b1ca06a813289d5dd0feb00fed150a0cc7441`.
+  - [CONECTADO, firmware «Attached to PC, emulating keyboard. Press Send key to transfer file 1.»](https://drive.google.com/file/d/1kNPMGih4bWC1UXBKnHINN6vXdt6bLouo/view) SHA-256 `2ca84208a59e82e78f15a08e31df3a9c096e92a0f4c03ae7e75d789dc530beed`.
+  - [DESPUÉS, retorno al mismo editor vacío y cursor](https://drive.google.com/file/d/1edCZCHrW_36LicIpIkpuOENEHVDmBF_B/view) SHA-256 **idéntico a ANTES** `9ff82e663729507bff00730c4f0b1ca06a813289d5dd0feb00fed150a0cc7441`.
+- Dos cambios de píxeles con contador `2277` para editor→modo PC y modo PC→editor; las dos capturas del editor son **idénticas byte por byte**. Se inspeccionaron visualmente las tres; por tanto **PASS visual de transición inmediata sin tecla**, no sólo PASS de cambio de bit/IRQ.
+- [Reporte JSON de ejecución y hashes](https://drive.google.com/file/d/1MNO-CGMSd85leUXR37DJBUHCj021zRVX/view), [eventos](https://drive.google.com/file/d/1rt11z0eiQl8x2kn2yeKtvYUEJJbsZ845/view), [launcher y build/boot reales](https://drive.google.com/file/d/1qdHatCoMUX-VnVzfPivhgFmZGTqq0gXE/view).
+- El reporte automático permaneció en `HOST_EDGE_IRQ_PASS_LCD_VISUAL_PENDING` porque la inspección de texto LCD requería observación posterior; **esta sección agrega esa inspección real, sin falsear el JSON**.
+- El lanzador inicialmente sólo exportó el registro por una variable RUN en subshell. Se completó la transferencia de **los mismos PNG, eventos y reporte**, sin volver a compilar ni ejecutar MAME. No hay ROM, DictROM ni contenido NVRAM privado publicados en GitHub.
+
+**Estado AS2K-STABLE/Vontar: TODAVÍA NO CORREGIDO NI INSTALADO.** Las rutinas fuente modificadas en la rama `fix/pc-host-wakeup-20261020` son candidatas para un futuro ciclo autorizado de la aplicación estable, y el PASS anterior se refiere exclusivamente a MAME-DIAG. No interpretar el cambio de IRQ DIAG como evidencia dinámica en la interfaz GTK de Stable. No repetir pruebas HC11, LCD o envío Send ya cerradas; para Stable bastará el ensayo dirigido PC ON/OFF menú y atajo sin teclado, sobre un candidato aislado antes de despliegue.
