@@ -65,7 +65,9 @@ TIMER_CALLBACK_MEMBER(asma2k_state::diag_pc_tick)
     src=replace_one(src,before,extra+before,"handler")
     before="void asma2k_state::machine_start()\n{\n\talphasmart_state::machine_start();"
     after=before+"""
-    m_diag_pc_last = BIT(m_diag_pc->read(), 0);
+    // machine_start() runs before MAME allows input-port reads. The DIAG
+    // cable defaults LOW; the 10ms timer observes real changes after startup.
+    m_diag_pc_last = false;
     save_item(NAME(m_diag_pc_last));
     timer_alloc(FUNC(asma2k_state::diag_pc_tick), this)->adjust(
         attotime::from_msec(10), 0, attotime::from_msec(10));"""
