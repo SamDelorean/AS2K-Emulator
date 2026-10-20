@@ -108,3 +108,22 @@ Evidencias privadas, sin ROM:
 - El lanzador inicialmente sólo exportó el registro por una variable RUN en subshell. Se completó la transferencia de **los mismos PNG, eventos y reporte**, sin volver a compilar ni ejecutar MAME. No hay ROM, DictROM ni contenido NVRAM privado publicados en GitHub.
 
 **Estado AS2K-STABLE/Vontar: TODAVÍA NO CORREGIDO NI INSTALADO.** Las rutinas fuente modificadas en la rama `fix/pc-host-wakeup-20261020` son candidatas para un futuro ciclo autorizado de la aplicación estable, y el PASS anterior se refiere exclusivamente a MAME-DIAG. No interpretar el cambio de IRQ DIAG como evidencia dinámica en la interfaz GTK de Stable. No repetir pruebas HC11, LCD o envío Send ya cerradas; para Stable bastará el ensayo dirigido PC ON/OFF menú y atajo sin teclado, sobre un candidato aislado antes de despliegue.
+
+## Incremento posterior — conexión de impresora alámbrica, AS2K Stable (20-oct-2026)
+
+**Solicitud del usuario:** corregir en el código estable el mismo defecto potencial de despertar al conectar/desconectar una impresora alámbrica. **Fuente:** `src/mame/skeleton/alphasma.cpp`, rama `fix/pc-host-wakeup-20261020`. Esta corrección es exclusiva del **driver AS2K Stable**, no del driver reducido AS2K-DIAG.
+
+**Evidencia estática del problema:** en `ui_process_command()`, `PRINTER ON/OFF` modificaba `m_ui_printer_connected` (señal física modelada PA0) sin generar IRQ para el MC68HC11. La rama `PC ON/OFF` había recibido el mismo arreglo; el teclado ya genera IRQ cuando se pulsa Print. La ausencia de notificación es cierta en la fuente; el retraso visible de impresora **es una hipótesis aún no validada dinámicamente**.
+
+**Cambio mínimo aplicado al código estable** (commit `1b3a3c352460088910a4091d54584345cd161e0f`):
+- Comparar `connected != m_ui_printer_connected` antes de actualizar el indicador de impresora.
+- Mantener exactamente la limpieza anterior de `m_printer_frame_active`, `m_printer_frame_timer` y `printer_capture_end(false)` al desconectar.
+- Tras actualizar el indicador, sólo cuando hay un cambio real, emitir `m_maincpu->set_input_line(MC68HC11_IRQ_LINE, ASSERT_LINE)` y registrar `AS2K_PRINTER_HOST_EDGE_WAKE_IRQ attached=1/0`.
+- No emitir IRQ ante `PRINTER ON` repetido o `PRINTER OFF` repetido; no simular teclas.
+- La prioridad y exclusión de PA0 (impresora) frente a PA0+PA2 (PC) y los controles GTK permanecen intactos. El decodificador de bytes físicos PD0, el cierre PCL y el backend CUPS/GTK/PDF no se tocaron.
+
+**Validación estática inmediata:** **11/11 PASS**, ejecutadas como aserciones sobre la fuente exacta publicada, para transiciones, guardia IRQ, limpieza, protocolo y UI. Se añadió también el guion autocontenido [`scripts/test-ui-printer-host-wakeup-static.py`](../scripts/test-ui-printer-host-wakeup-static.py), commit `d50b3d24043e4a94abe208c377d81b53611c4807`. **No se ha compilado ni probado dinámicamente esta variante de impresora** en este incremento: `STABLE_SOURCE_FIX_APPLIED / STATIC_11_OF_11_PASS / PRINTER_DYNAMIC_PENDING`.
+
+**Limitación de despliegue:** la compilación nativa ARMv7/musl de Surf iniciada antes de este cambio estaba trabajando con una copia aislada que incluía únicamente la corrección de PC; **no contiene automáticamente esta corrección de impresora**. No alterar su árbol durante la compilación, no iniciar otra simultánea ni afirmar que Surf/Vontar están actualizados con la corrección de impresora. Para promoverla al binario estable se debe reutilizar el árbol nativo y objetos compilados una vez terminada la ejecución anterior, aplicar exclusivamente el delta de impresora, compilar/revincular de forma incremental y realizar regresión acotada de conectar/desconectar impresora sin tecla, Print/PCL/PDF y ausencia de regresión PC/Send.
+
+**Rama de distribución congelada:** `release/vontar-stable-public-20261018` intacta; no publicar release ni instalar sin la verificación del binario resultante.
