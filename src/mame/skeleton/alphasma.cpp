@@ -1854,6 +1854,9 @@ void asma2k_state::ui_process_command(std::string const &line)
 	if (line == "PRINTER ON" || line == "PRINTER OFF")
 	{
 		bool const connected = line == "PRINTER ON";
+		// Printer-ready is PA0.  A sleeping HC11 needs the same host-edge
+		// wakeup as PC attachment; a repeated command must not inject an IRQ.
+		bool const changed = connected != m_ui_printer_connected;
 		if (!connected)
 		{
 			m_printer_frame_active = false;
@@ -1861,6 +1864,11 @@ void asma2k_state::ui_process_command(std::string const &line)
 			printer_capture_end(false);
 		}
 		m_ui_printer_connected = connected;
+		if (changed)
+		{
+			m_maincpu->set_input_line(MC68HC11_IRQ_LINE, ASSERT_LINE);
+			logerror("AS2K_PRINTER_HOST_EDGE_WAKE_IRQ attached=%u\n", unsigned(connected));
+		}
 		ui_emit_event(std::string("STATUS\tPrinter ") + (connected ? "connected" : "disconnected"));
 		return;
 	}
