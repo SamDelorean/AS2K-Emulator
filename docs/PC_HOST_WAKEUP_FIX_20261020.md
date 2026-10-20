@@ -65,3 +65,26 @@ La rama `release/vontar-stable-public-20261018` y la instalación estable Vontar
 - **Commander:** tres llamadas en esta intervención: identificación del estado, inspección puntual del driver y lanzamiento integrado de parche + copia de respaldo + compilación + validación, sin sondeos. La evidencia se recuperó exclusivamente de Drive.
 
 **Distinción de resultados:** `DIAG_UPDATED_BUILD_VALIDATE_PASS / FIRMWARE_PC_MODE_DYNAMIC_PENDING`. La compilación y el nuevo puerto no demuestran que la ROM AS2K entre o salga del modo PC sin teclado: ese cambio requiere una comprobación dirigida de firmware con ROM privada y observación LCD, ejecutada **sólo** en el `as2kdiag` actualizado. Tampoco se ha compilado/instalado la rama estable corregida en Vontar ni Surface RT. Conservar ambas restricciones y no trasladar el parche DIAG al driver estable por analogía.
+
+## AS2K-DIAG — primera ejecución dinámica y fallo de inicialización real (2026-10-20)
+
+**Nuevo estado prioritario:** `DIAG_BUILD_VALIDATE_PASS / DIAG_BOOT_FAIL_INPUT_PORT_INIT / FIRMWARE_PC_WAKE_UNTESTED`. La variante previamente actualizada `/home/spc/Projects/alphasmart/mame-as2k/as2kdiag` (SHA-256 `771be0f36b6693cfe6ecd1419d51d5597c612fa853e5f4a9de7d35daf9816ada`) **NO ARRANCA con el parche actual**, pese a `-validate` y `-listxml` exitosos. No utilizar para otras pruebas hasta reparar o restaurar. Binario anterior respaldado en `/home/spc/Projects/alphasmart/private/diag-pc-wakeup-20261020/as2kdiag.before` (SHA-256 `e55b25dc4540d89c4e292b03a009dd32b4cb396c943aaec9fe3e9dbe828dc7ba`).
+
+**Ejecución dirigida:** en la T640 se creó `scripts/as2k-diag-pc-host-edge.lua` (publicado en esta rama) y una NVRAM/ROM staged privada completamente independiente bajo `/home/spc/Projects/alphasmart/private/diag-pc-wakeup-20261020/runtime-w0SqefFy`. Verificaciones de identidad **PASS** antes de arrancar:
+
+- Firmware AS2K v3.14 33,253 B SHA1 `e0b777dc68c671c31ba808e214fb9d2573b9a853`.
+- DictROM 131,072 B SHA1 `033094bb850c614008b4ecc2eefbcb01b8a2bcda`.
+- CGROM F05 4096 B SHA1 `0196e871584ee5d370856e7307c0f9d1466e3e51`.
+- `as2kdiag` SHA256 coincide con versión compilada. La prueba estaba preparada para esperar 12 s, solicitar `PC_CONNECTED=1`, capturar LCD, desconectar `0`, capturar editor sin presionar ninguna tecla y exigir exactamente dos marcadores IRQ; no se alcanzó ninguno de esos eventos.
+
+**Resultado del proceso:** MAME terminó `exit 3` **antes del primer frame y de cargar Lua**, con mensaje inequívoco `Fatal error: Input ports cannot be read at init time!`. Se identificó como causa propia del parche DIAG la instrucción `m_diag_pc_last = BIT(m_diag_pc->read(), 0);` añadida en `asma2k_state::machine_start()`. MAME aún no permite la lectura de inputs en `machine_start`. Otras líneas, como `OPTIONAL as2k_stage0.bin NOT FOUND`, `ks0066_f05.bin ROM NEEDS REDUMP` o el aviso `XDG_RUNTIME_DIR`, **no son la causa fatal observada**. No acusar al firmware ni al modelo de IRQ.
+
+**Corrección estática ya publicada, sin ejecutar todavía:** el script de aplicación original `scripts/patch-as2k-diag-pc-host-edge.py` inicializa ahora `m_diag_pc_last=false` en `machine_start`, dejando el sondeo real al timer de 10 ms post-inicialización. Como el árbol canónico de T ya tenía el parche aplicado, existe un reparador **exact-SHA y de una sola línea** `scripts/repair-as2k-diag-pc-host-startup.py`. Requiere SHA exacto del driver anterior `c83b6dd3f528827851680b8333a1e087be31dce956bddd98d6dea734fdb0a832`, HEAD del árbol DIAG `a4b99b1a700a1d70b93a798fe7833e4cae28c137`, copia privada nueva, y no toca `AGENTS.md` ni `src/osd/modules/debugger/none.cpp`. No repetir la aplicación inicial del parche sobre el árbol ya modificado.
+
+**Siguiente intervención necesaria:** con nueva autorización después de agotar **3/3 llamadas Commander** en este intento (inventario privado acotado, lanzamiento de prueba, diagnóstico del error), ejecutar en **una llamada agrupada**: sincronizar esta rama, aplicar el reparador exact-SHA, `make -j3` incremental exclusivamente AS2K-DIAG, `-validate`/ROM boot y la misma observación Lua, recuperar TXT de marcadores y tres PNG por Drive. Si falla boot, restaurar ejecutable DIAG anterior desde su respaldo privado, sin modificar el estable. No fabricar un PASS ni confundir `MAME -validate` con arranque funcional.
+
+Evidencias privadas, sin ROM:
+- [launcher de la primera prueba](https://drive.google.com/file/d/1K9NwPL_3rRpULHmT5W01BcojhJLpikyc/view)
+- [diagnóstico exacto stderr MAME](https://drive.google.com/file/d/1ZRkIun1TKy7Y7HSBU0QebB9y3AN6BBUq/view)
+
+**Estado de la instalación Vontar:** intacta. La rama pública congelada permanece intacta. `FULL_AS2K_PC_WAKE_DYNAMIC_PASS` **pendiente**.
