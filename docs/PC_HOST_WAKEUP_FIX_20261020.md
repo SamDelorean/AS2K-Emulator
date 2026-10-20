@@ -33,3 +33,17 @@ La entrada alternativa `PC_CONNECTED` mediante Pause/Break tenía el mismo defec
 ## Distribución
 
 La rama `release/vontar-stable-public-20261018` y la instalación estable Vontar son referencias protegidas. Mantener la rama de corrección separada; no instalar en Vontar ni en Surface RT ni etiquetar release hasta validar. Una vez aprobada, preparar actualización sobre la instalación existente con respaldo previo, preservando el gestor `as2k_session.py` y todos sus accesorios, y sin reconstruir ni reemplazar funciones ajenas.
+
+## Resultado real de la primera validación — T640, 2026-10-20
+
+**VALIDADO EN T640:** rama independiente `fix/pc-host-wakeup-20261020` sobre la referencia release congelada, en checkout propio `/home/spc/Projects/alphasmart/as2k-pc-host-wakeup-fix`. **Una sola llamada Commander**, sin modificaciones a la instalación Vontar, al árbol MAME original ni a la rama release.
+
+`python3 scripts/test-ui-pc-host-wakeup-static.py`: **10/10 PASS**. Concretamente comprobaron el registro de ambas transiciones PC desde la interfaz; comparación de estado físico antes del override; IRQ sólo en borde verdadero; protección del fallback Pause/Break; IRQ en borde Pause/Break; ausencia de pulsación artificial; continuidad del cierre de Send; liberación de IRQ en barrido de matriz; conectividad del menú/atajo al mismo puente; conservación del contrato de dos Send y desconexión.
+
+`sh -n scripts/test-ui-pc-host-wakeup-runtime.sh`: **PASS de sintaxis únicamente**, **NO** ejecución MAME.
+
+[Registro auténtico privado de T640](https://drive.google.com/file/d/1zmGjbidRVKk2D9OylQt5uU__5QcJD3Kb/view): `AS2K_PC_WAKEUP_STATIC_EXIT=0`, `AS2K PC HOST EDGE STATIC CONTRACT: PASS (10/10)`. Los archivos privados `/home/spc/.config/as2k/firmware.bin` y `dictrom.bin` existen, **no se abrieron, copiaron ni publicaron**. El árbol histórico `/home/spc/Projects/alphasmart/as2k-stable-vontar/mame-as3k`, su `out/as2k-bin` y su seed NVRAM no existen en las rutas históricas esperadas; **no asumir que esos objetos siguen disponibles ni ejecutar una compilación masiva improvisada**.
+
+**Estado real:** `SOURCE_FIX_DONE / STATIC_10_OF_10_PASS / RUNTIME_AND_LCD_PENDING / VONTAR_INSTALL_UNMODIFIED`. No se ha probado aún el despertar visual del firmware sobre AS2K ni se ha instalado el parche en Vontar. Se requiere validación dirigida en **MAME-DIAG canónico**, reutilizando el motor e insumos privados ya existentes y sin volver a ensayar Send. Después de PASS se podrá decidir la promoción a stable mediante el flujo de distribución autorizado.
+
+**No afirmar** `AS2K_RUNTIME_PASS` por el éxito previo de ASPRO: son ROM, memoria y plataforma distintas.
