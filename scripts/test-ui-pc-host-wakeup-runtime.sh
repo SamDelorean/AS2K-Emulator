@@ -8,6 +8,12 @@ if [ "$#" -ne 5 ]; then
     exit 2
 fi
 CORE=$1 ROM=$2 DICT=$3 SEED=$4 WORK=$5
+# User policy: experimental firmware behavior is exercised in MAME-DIAG
+# exclusively. Never run this diagnostic in the installed Stable/MAME generic.
+case "$(basename -- "$CORE")" in
+    as2kdiag) ;;
+    *) echo "BLOCKED: experimental PC wakeup runtime requires canonical as2kdiag"; exit 2 ;;
+esac
 [ -x "$CORE" ] && [ -f "$ROM" ] && [ -f "$DICT" ] && [ -d "$SEED" ] || {
     echo "BLOCKED: missing explicit executable/private inputs"; exit 2;
 }
