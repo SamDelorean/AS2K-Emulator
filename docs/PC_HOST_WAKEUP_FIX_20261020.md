@@ -47,3 +47,5 @@ La rama `release/vontar-stable-public-20261018` y la instalación estable Vontar
 **Estado real:** `SOURCE_FIX_DONE / STATIC_10_OF_10_PASS / RUNTIME_AND_LCD_PENDING / VONTAR_INSTALL_UNMODIFIED`. No se ha probado aún el despertar visual del firmware sobre AS2K ni se ha instalado el parche en Vontar. Se requiere validación dirigida en **MAME-DIAG canónico**, reutilizando el motor e insumos privados ya existentes y sin volver a ensayar Send. Después de PASS se podrá decidir la promoción a stable mediante el flujo de distribución autorizado.
 
 **No afirmar** `AS2K_RUNTIME_PASS` por el éxito previo de ASPRO: son ROM, memoria y plataforma distintas.
+
+**Protección adicional aplicada tras la revisión:** el script dinámico rechaza ejecutables que no se llamen `as2kdiag`, para cumplir la política exclusiva MAME-DIAG. Esta modificación del guion fue estática y no se ha ejecutado con ROM; la validación sintáctica de la versión anterior fue PASS.
