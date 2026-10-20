@@ -496,18 +496,18 @@ static_assert(std::size(s_pc_us_text) == unsigned(as2k_pc_key::slash) - unsigned
 
 INPUT_CHANGED_MEMBER(asma2k_state::pc_connected_changed)
 {
-	// Once the standalone UI owns the PC-present state, the legacy Pause/Break
-	// toggle remains a fallback input only and must not create a second source
-	// of truth for the hardware-facing host-sense lines.
-	if (m_ui_pc_override)
+	// The physical Pause/Break fallback is ignored once the GTK UI controls
+	// PC attachment.  Otherwise wake the waiting HC11 on a genuine host edge.
+	if (m_ui_pc_override || !BIT(oldval ^ newval, 0))
 		return;
 
-	// PC Connected defines the host session.  Send is intentionally not part
-	// of the sink contract: a real PC only sees keyboard traffic on the wire.
+	// Session lifetime is defined by host attach/detach, never by Send.
 	m_pc_frame = 0;
 	m_pc_frame_bits = 0;
 	pc_keyboard_reset();
 	send_sink_end();
+	m_maincpu->set_input_line(MC68HC11_IRQ_LINE, ASSERT_LINE);
+	logerror("AS2K_PC_HOST_EDGE_WAKE_IRQ source=pause attached=%u\n", unsigned(BIT(newval, 0)));
 }
 
 bool asma2k_state::pc_connected()
@@ -1831,7 +1831,9 @@ void asma2k_state::ui_process_command(std::string const &line)
 	if (line == "PC ON" || line == "PC OFF")
 	{
 		bool const connected = line == "PC ON";
-		bool const changed = !m_ui_pc_override || (connected != m_ui_pc_connected);
+		// The first UI command may take ownership of a pre-existing Pause
+		// state. Compare actual physical host state, not UI-override lifetime.
+		bool const changed = connected != pc_connected();
 		m_ui_pc_override = true;
 		m_ui_pc_connected = connected;
 		if (changed)
@@ -1840,6 +1842,10 @@ void asma2k_state::ui_process_command(std::string const &line)
 			m_pc_frame_bits = 0;
 			pc_keyboard_reset();
 			send_sink_end();
+			// An idle stock firmware can sleep until keyboard IRQ. Notify once
+			// per genuine host edge without injecting any phantom key.
+			m_maincpu->set_input_line(MC68HC11_IRQ_LINE, ASSERT_LINE);
+			logerror("AS2K_PC_HOST_EDGE_WAKE_IRQ source=ui attached=%u\n", unsigned(connected));
 		}
 		ui_emit_event(std::string("STATUS\tPC ") + (connected ? "connected" : "disconnected"));
 		return;
