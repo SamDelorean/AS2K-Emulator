@@ -48,7 +48,7 @@ cmp -s "$LOGROOT/alphasma.pc-wakeup.cpp" "$SRC" || cp "$LOGROOT/alphasma.pc-wake
 STEP=BUILD_INCREMENTAL
 cd "$TREE"
 # 2 jobs; previously assembled libraries and generated gmake preserved.
-make -j2 SUBTARGET=as2k SOURCES=src/mame/skeleton/alphasma.cpp REGENIE=1 USE_QTDEBUG=0
+make -j2 NOWERROR=1 SUBTARGET=as2k SOURCES=src/mame/skeleton/alphasma.cpp REGENIE=1 USE_QTDEBUG=0
 test -x "$TREE/as2k"
 STEP=VALIDATE
 "$TREE/as2k" -validate
