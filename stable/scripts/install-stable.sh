@@ -42,7 +42,8 @@ do
     [ -f "$required" ] || { echo "Missing installation resource: $required" >&2; exit 2; }
 done
 
-install -d "$LIBEXEC_DIR" "$FRONTEND_DIR" "$BIN_DIR" "$APP_DIR"
+# Explicit traverse permissions even under umask 077 (Surf/postmarketOS).
+install -d -m 0755 "$PREFIX/libexec" "$LIBEXEC_DIR" "$FRONTEND_DIR" "$BIN_DIR" "$APP_DIR"
 install -m 0755 "$BINARY" "$LIBEXEC_DIR/as2k-bin"
 install -m 0755 "$REPO_DIR/frontend/as2k_ui.py" "$FRONTEND_DIR/as2k_ui.py"
 install -m 0755 "$REPO_DIR/frontend/as2k_session.py" "$FRONTEND_DIR/as2k_session.py"
