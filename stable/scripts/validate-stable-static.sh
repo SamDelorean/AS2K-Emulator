@@ -46,7 +46,14 @@ sh -n "$ROOT/scripts/test-ui-send-runtime.sh"
 sh -n "$ROOT/scripts/test-ui-print-runtime.sh"
 sh -n "$ROOT/scripts/test-ui-ir-runtime.sh"
 sh -n "$ROOT/scripts/test-ui-keyboard-runtime.sh"
-python3 -m py_compile "$ROOT/scripts/patch-mc68hc11-pai.py"
+# Read-only syntax validation: the legacy py_compile command dirtied Git.
+python3 -B - "$ROOT/scripts/patch-mc68hc11-pai.py" "$ROOT/scripts/patch-mc68hc11-bootstrap.py" <<'PY_STATIC'
+from pathlib import Path
+import sys
+for name in sys.argv[1:]:
+    p=Path(name)
+    compile(p.read_bytes(),str(p),"exec")
+PY_STATIC
 sh "$ROOT/scripts/validate-ui-static.sh"
 
 grep -F '@PREFIX@/bin/as2k' "$ROOT/packaging/as2k.desktop.in" >/dev/null \
