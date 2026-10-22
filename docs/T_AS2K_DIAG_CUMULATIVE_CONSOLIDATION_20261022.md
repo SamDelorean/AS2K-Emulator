@@ -1,6 +1,6 @@
 # AS2K-DIAG T640 — consolidación acumulativa, auditoría y handoff (22-oct-2026)
 
-**Estado actual (actualización de las 10:50 de México): `CANDIDATE_STATIC_PASS_CUMULATIVE_PASSIVE_SDK_SET2_IR_RAM2_PC / FUNCTIONAL_PENDING`.**
+**Estado actual (actualización de las 12:01 de México): `CANDIDATE_STATIC_PASS_CUMULATIVE_PASSIVE_SDK_SET2_IR_RAM2_PC / MV11_CUMULATIVE_FUNCTIONAL_PASS / OTHER_FUNCTIONAL_TESTS_PENDING`.**
 
 La etapa de las 10:36, `CANDIDATE_STATIC_PASS_IR_RAM_RAM2_PC`, es ahora un resultado histórico intermedio.
 
@@ -187,3 +187,20 @@ El archivo Stage0 opcional, `as2k_stage0.bin`, 27 bytes, SHA-1 `ab76eafa386311b2
 **Estado nuevo:** `ROMSET_PREFLIGHT_PASS / MV11_CUMULATIVE_FUNCTIONAL_PENDING`; intentos funcionales nuevos todavía **0**. Histórico MV-11 `STATUS=PASS` permanece válido para el binario histórico correspondiente. No se cambiaron las ROM, no se copiaron a repositorios públicos ni se tocaron Vontar, Surf o Stable. Evidencia de este preflight: `~/.local/share/alphasmart/audits/as2k/diag-cumulative-20261022/private-rom-verify.log` en T.
 
 **Regla operativa añadida:** antes de declarar ausente una ROM AS2K, inspeccionar `/home/spc/Projects/alphasmart/private/roms/as2k/` y el subárbol `private/roms/diagnostic/as2k/` con `-rompath` explícito; no iniciar búsquedas de donantes ni reconstruir ZIP ya existente.
+
+## MV-11 ejecutado sobre el DIAG acumulativo — PASS funcional (22-oct-2026, 12:01 México)
+
+**Estado actual de MV-11: `PASS_HC11_RX_INJECTED_CRITICAL_MAME_KEY` para el nuevo ejecutable acumulativo.** Esta sección prevalece sobre el `MV11_CUMULATIVE_FUNCTIONAL_PENDING` de los preparativos históricos anteriores. No representa un `FULL_REGRESSION_PASS` de Set2, IR, RAM2 ni SDK/ZPSD.
+
+- **Equipo:** T640 `spc-HP-t640-Thin-Client`, único `mame-as2k/as2kdiag`, SHA-256 `ab5d18fce700770a7aff2d16bd53f8bd8eb5e78241558b595031abe3a47fbd70`.
+- **Stable protegido:** `/usr/local/libexec/as2k/as2k-bin`, SHA-256 `7ba52866caf2899a9ffa309a4063a0d1530332e129b5724156ba86caa67b6557`, idéntico tras la ejecución.
+- **Arnés histórico original recuperado:** `000_as2k_probe_mv11_l3_critical_input_OBSERVER_FIX_20261020.job.sh`, SHA-256 `79ac390860dba469c1d4bb9f13b1c2cbc00b439bce9e06e013190b0c0e8347a5`. Archivo original localizado en el archivo privado `googledrive:AS2K_TEMP/COMMANDER_PIPELINE/archive` y en el trabajo canónico `~/.local/share/dcjob/work/000_as2k_probe_mv11_l3_critical_input_OBSERVER_FIX_20261020_20261021T031249Z/task.job.sh`.
+- **Reproducción controlada:** se sustituyó **exactamente una ocurrencia** del pin SHA-256 histórico `e0dde298...` por `ab5d18...`, sin cambiar comandos MAME, arnés Lua, monitor de 172 bytes, overlay de 78 bytes, verificador ni condiciones de prueba. Job nuevo `000_as2k_probe_mv11_l3_critical_input_OBSERVER_FIX_CUMULATIVE_20261022.job.sh`, SHA-256 `eb266a9445aec5014dde1924c98b462b19db2c3287a6e07318522c31211f49fc`; `bash -n` aprobado.
+- **Única ejecución autorizada:** `dcjob run-once` en T, `2026-10-22T18:01:34Z` (12:01 México), `STATUS=PASS`, `EXIT_CODE=0`, **`MAME_ATTEMPTS=1`**, `mame_rc=0`.
+- **Evidencia técnica:** RX 80 bytes, TX 11 bytes, overlay original verificado, BDS `A5015020000407D7` (estado `$20`); matriz inicial `$FF`, flanco nativo `AS2K_PM_R4_KB_CB mask=80 old=1 new=0` observado una vez; lectura HC11 `MV11_MATRIX_TRANSITION A=7F SP=00FC`, retorno de filas `$FF`, restauración de PORTA, pila `$00FF`, READY PC `$0098`, sin errores de arnés.
+- **Límites explícitos del arnés:** `RX_HARNESS=DEBUGGER_AT_RX_ENTRY`; `SCI_RX_NATIVE=NOT_TESTED`, `EXTERNAL_BUS_ELECTRICAL=NOT_TESTED`, `BOOTSTRAP_DOWNLOAD_NATIVE=NOT_TESTED`. La prueba ejercita transición **real en el puerto MAME** y lectura HC11, no teclado físico.
+- **Fuentes ROM:** privadas en `/home/spc/Projects/alphasmart/private/roms/as2k/`; el job original construye un romroot transitorio en `/dev/shm`, separado de NVRAM/cfg/state/inputs. No se publicaron ni modificaron ROM/NVRAM.
+- **Paquete canónico de evidencia:** `000_as2k_probe_mv11_l3_critical_input_OBSERVER_FIX_CUMULATIVE_20261022_20261022T180134Z.result.tar.gz`, SHA-256 `848fd17d97792c5e59de5642d53a0874c09d7d3d87f0da283581671e5131ae70`; comprobada coincidencia entre paquete local y sidecar en el `outbox` privado de Drive. Incluye `result/summary.txt`, `check.txt`, `error.log`, `input_trace.txt`, `fixture.json`, `mv11.mame` y overlay capturado. El job quedó archivado por `dcjob`.
+- **Carpeta local de resultados:** `~/.local/share/dcjob/work/000_as2k_probe_mv11_l3_critical_input_OBSERVER_FIX_CUMULATIVE_20261022_20261022T180134Z/`.
+
+**Dictamen específico:** `MV11_CUMULATIVE_FUNCTIONAL_PASS`. La discrepancia histórica entre el SHA `e0dde298...` y el DIAG posterior queda **resuelta para la cobertura funcional MV-11** porque el nuevo SHA fue sometido al mismo arnés aceptado y pasó; ambos binarios siguen siendo distintos, no se afirma identidad binaria. Conservar intactos los PASS históricos y continuar mediante pruebas nuevas **solamente de los instrumentos acumulados que carecen de evidencia dirigida**. No reinstalar Stable ni generar árboles separados.
