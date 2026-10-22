@@ -47,6 +47,15 @@ test-output/
 .env.*
 !.env.example
 
+# Preserve clean Git checkouts after static-only validation.
+__pycache__/
+*.pyc
+*.pyo
+*.log
+*.trace
+*.zip
+*.7z
+
 # Editors and operating systems
 .vscode/
 .idea/
