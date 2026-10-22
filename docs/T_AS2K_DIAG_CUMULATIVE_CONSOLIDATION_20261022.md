@@ -1,6 +1,8 @@
 # AS2K-DIAG T640 — consolidación acumulativa, auditoría y handoff (22-oct-2026)
 
-**Estado real: `CANDIDATE_STATIC_MERGE_PREPARED / BUILD_PENDING / FUNCTIONAL_PENDING`.**
+**Estado actual (actualización de las 10:36 de México): `CANDIDATE_STATIC_PASS_IR_RAM_RAM2_PC / FUNCTIONAL_PENDING / COMPLETE_INSTRUMENTATION_PENDING`.**
+
+**Historial inicial del 22-oct (antes de la compilación exitosa):** `CANDIDATE_STATIC_MERGE_PREPARED / BUILD_PENDING / FUNCTIONAL_PENDING`.
 La consolidación **NO está terminada**. Ningún resultado histórico PASS se revalidó ni se alteró. Alcance exclusivamente T640; Vontar y Surface RT no se tocaron.
 
 ## Referencia conservada
@@ -97,3 +99,21 @@ repetir los históricos PASS si no se modificó su cobertura.
 **Dictamen hoy: integración acumulativa INCOMPLETA.** Existe progreso
 estático reproducible y fuente/evidencia preservadas, pero el
 ejecutable operativo es todavía el original de SHA `861e976...`.
+
+## Continuación en T — integración compilada (22-oct-2026, 10:36 México)
+
+**Resultado medido:** `CANDIDATE_STATIC_PASS_IR_RAM_RAM2_PC`, MAME `-validate` exit **0** (verificación independiente posterior), `git diff --check` de las tres fuentes modificadas **0**, proceso de compilación `make -j3 ... SUBTARGET=as2kdiag ...` **exit 0**, y ejecutable enlazado exitosamente. **No atribuir PASS funcional a este incremento.**
+
+- **Único ejecutable AS2K-DIAG vigente en la T:** `/home/spc/Projects/alphasmart/mame-as2k/as2kdiag`, SHA-256 `82e61bfb86ceff7da89250bff8e77c1c65e4b1ce2d1ef2a4c3a87a91f34e67a8`. Un único archivo `as2kdiag` localizado en los árboles inspeccionados después de la compilación. MAME `-listfull` comprende `asma2k` y `asmapro`; esto NO significa dos emuladores DIAG ejecutables.
+- **AS2K Stable T protegido:** `/usr/local/libexec/as2k/as2k-bin` SHA-256 `7ba52866caf2899a9ffa309a4063a0d1530332e129b5724156ba86caa67b6557`, igual antes y después; **Vontar/Surf sin intervención**.
+- **Fuentes efectivamente instaladas en único árbol DIAG:** `src/mame/skeleton/alphasma.cpp`, `src/devices/cpu/mc68hc11/mc68hc11.cpp`, `mc68hc11.h` bajo `mame-as2k`; sin nuevo checkout ni nueva copia MAME. No se hizo reset/stash/clean, ni se editó `AGENTS.md` o el Stable.
+- **Instrumentación fusionada y compilada:** PM-R4 observación de teclado e IRQ HC11, transiciones de conexión PC/impresora, IrDA lógico/peer, impresión conectada y captura/submit PCL/PDF, Gate1B memoria/punteros, acceso RAM posterior a infrarrojos y **sondas RAM2 independientes**.
+- **Corrección de integración de entrada:** el puerto legado `PC_CONNECTED` con Pause/Break pertenece al selector de accesorios y ya **no** se interpreta simultáneamente como la entrada física de cable. El lector `m_diag_pc` ahora usa `PORT_START("DIAG_PC_ATTACHED")`; `diag_pc_port_a_r` conserva el dato de `asma2k_port_a_r` por defecto y solamente aplica niveles PA0/PA2 de PC/impresora cuando existe una **entrada de diagnóstico externa** explícita. Se conservan los marcadores `AS2K_DIAG_PC_HOST_EDGE_WAKE_IRQ` y `AS2K_DIAG_PRINTER_HOST_EDGE_WAKE_IRQ`.
+- **RAM2:** recuperada `ram2_internal_access` con marcador `AS2K_RAM2_ACCESS`; lector/escritor `0x0040..0x00ff` instalados **solo** bajo `AS2K_RAM2_PROBE` distinto de `0`; emite `AS2K_RAM2_PROBE_ACTIVE` y no se activa en arranque normal. Coexiste con `AS2K_POSTIR_RAM_TRACE` sin ponerlo en marcha por defecto.
+- **Gate1A:** código legado de diagnóstico no reactivado; `set_as2k_gate1a_probe(false)` durante configuración de la máquina por la política vigente.
+- **Compile blocker recuperado:** la primera mezcla tenía cabeceras incompletas y dos `machine_reset`, que se resolvieron; un intento posterior se detuvo por espacios finales. Se corrigió solo la candidata. Nuevas compilaciones `build-20261022-b2.log` y `build-ram2-pc.log` acabaron enlazando `as2kdiag` sin errores.
+- **Instrumentación aún no fusionada y que no debe marcarse completa:** banco experimental SDK/ZPSD/Payload1/Generator `mame-as3k`; experimento `mame-pr16171-fix` de PC teclado Set2/Alt numérico; diferencias particulares `mame-post-ir-ram`. Las instalaciones históricas Gate 1A directas no están autorizadas a reactivarse. Verificar contratos y resolver callbacks por escenario antes de incorporarlas.
+- **Identidad MV-11 sigue abierta:** SHA aprobado anteriormente `e0dde298...`, el binario anterior al incremento tenía SHA `861e976...`, la candidata ahora SHA `82e61b...`. No se adjudica automáticamente ninguno de los antiguos PASS funcionales al nuevo compilado. Se preservan las evidencias anteriores; no reejecutar campañas ya aprobadas indiscriminadamente.
+- **Evidencia T en carpeta privada preexistente:** `~/.local/share/alphasmart/audits/as2k/diag-cumulative-20261022/` con `build-20261022-b2.log`, `build-ram2-pc.log`, `validate.log`, `validate-independent.log`, `listfull.txt`, `binary-strings.txt` y `build.status`, respaldos de rollback de fuentes/ejecutable. Estos no son entornos MAME adicionales y son transitorios hasta aceptación final. No almacenar firmware privado en Git.
+
+**Próximo incremento inequívoco:** 1) reconciliar instrumentación SDK/ZPSD/Set2 con activación por escenario, sin perder callbacks PM-R4/IR/PC; 2) compilar incrementalmente el único `as2kdiag`; 3) validar estáticamente y pruebas dirigidas DIAG solo sobre cobertura modificada; 4) fijar SHA/producto y retirar respaldos ejecutables antiguos cuando haya aceptación. No recompilar Stable.
