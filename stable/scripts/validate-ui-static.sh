@@ -4,7 +4,14 @@ set -eu
 REPO_DIR=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 UI="$REPO_DIR/frontend/as2k_ui.py"
 
-python3 -m py_compile "$UI" "$REPO_DIR/frontend/as2k_pcl_to_pdf.py"
+# Validate the source in memory: no __pycache__ or Git tree mutation.
+python3 -B - "$UI" "$REPO_DIR/frontend/as2k_pcl_to_pdf.py" <<'PY_STATIC'
+from pathlib import Path
+import sys
+for name in sys.argv[1:]:
+    p=Path(name)
+    compile(p.read_bytes(),str(p),"exec")
+PY_STATIC
 
 grep -q '^LCD_WIDTH = 240$' "$UI"
 grep -q '^LCD_HEIGHT = 36$' "$UI"
