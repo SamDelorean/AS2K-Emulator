@@ -1,0 +1,95 @@
+# AS2K Stable — manifiesto de publicación de código
+
+**Fecha:** 2026-10-21.
+**Repositorio:** `SamDelorean/AS2K-Emulator`.
+**Rama de publicación:** `release/stable-2026.10.21-vontar-surf`.
+
+## Procedencia del código
+
+Se preservó la referencia histórica aprobada de Vontar:
+`release/vontar-stable-public-20261018`
+(commit `d66d8614314eb8bad20fdb4dc1e1aa21e148307d`),
+sobre la fuente original AS2K
+`36996b91053969661371dc067d49026fab367a47`.
+Donante MAME:
+`1dc2180181a3b1a21e8761ae40b50a9f55ac4a5b`.
+
+En `stable/` se copiaron los **objetos Git originales de código fuente**
+sin volver a redactar el motor ni los menús. La instalación ASPRO
+recientemente publicada usa la misma estructura de producto,
+pero su núcleo/archivos privados siguen independientes.
+
+| Archivo estable | Blob SHA-1 Git de la fuente aprobada |
+| --- | --- |
+| `src/mame/skeleton/alphasma.cpp` | `d6409067d2c64719e41ac5871952b85f9297b4e0` |
+| `frontend/as2k_ui.py` | `767759a0cb3907ce72e91cbbfe260435844db7d3` |
+| `frontend/as2k_session.py` | `057356fe49798bc57518f5134bf58a52915a7628` |
+| `scripts/build-stable-core.sh` | `82f8582f870c5b930854cfce69da7d21959c75da` |
+| `packaging/as2k-launcher.sh` | mismo archivo lanzador de Vontar 18-oct |
+
+La estructura copió adicionalmente las fuentes de los scripts nativos
+de Surf del trabajo `feature/stable-payload-auto-boot-b3-20261015`,
+para mantener la técnica musl v2 y la separación build/install.
+**Solo** el script de instalación Surf se corrigió para incluir
+el gestor de sesión que ya existía en Vontar. No se modificó
+`src/mame/skeleton/alphasma.cpp` ni la lógica de los menús GTK.
+
+## Evidencia instalada previamente verificada: Vontar
+
+| Recurso instalado | SHA-256 verificado en el acta de Vontar |
+| --- | --- |
+| `/usr/local/libexec/as2k/as2k-bin` | `099a1113f8c148448e47d0fb86c37e8644c6fbdb3cea261da1fff026e54d2469` |
+| `/usr/local/libexec/as2k/frontend/as2k_session.py` | `57d0dd376cb8809858d19179373c8d813ff5eb7be9d0a103d6270904e703bf0f` |
+| `/usr/local/libexec/as2k/frontend/as2k_ui.py` | `ff8be74da550720c6e35c25df974d65161ef2b939a978bf0da7763f78b76051a` |
+| `/usr/local/bin/as2k` | `bc7c2670c82c53f10275a0ea8d83b09f9696930dee72d897e4e7de8f301720a8` |
+
+Estos valores pertenecen al *snapshot aprobado de 18-oct-2026*;
+no son resultado de una comprobación nueva de Vontar durante
+esta publicación. El intento posterior de actualizar el despertar
+por conexión PC **falló en el enlazado**, y no se presenta como
+parte del Stable publicado.
+
+## Evidencia Surf — nativa ARMv7
+
+- Script probado:
+  `scripts/surface-native-build-musl-v2-20261017.sh`
+  generado por `surface-native-musl-v2-20261017.sh`.
+- Estados constatados en Surface:
+  `STATUS=PASS, STEP=READY` en
+  `status/native-musl-v2-20261017.status` y
+  `PASS STEP=READY` en `status/build.status`.
+- `BX_MUSL_NATIVE_SYNTAX_PASS`,
+  `BX_FULL_LIB_PREFLIGHT_PASS`, compilación de `libbx.a`.
+- Objeto y entorno ARMv7 generados **directamente en Surf**, sin T640.
+- Instalación AS2K existente comprobada anteriormente; no se
+  vuelve a instalar ni se adjudica un SHA actual de Surf sin
+  nueva auditoría del ejecutable.
+- El **integrador Surf incluido en esta publicación** conserva una
+  modificación documental/estática no probada de nuevo en el equipo:
+  ahora coloca `as2k_session.py` del paquete estable en lugar
+  de omitir el gestor de sesión.
+
+## Cobertura y limitaciones
+
+El snapshot Vontar fue aprobado para uso humano con su frontend.
+Esto **no** constituye una ejecución nueva de GUI, ROM, DictROM,
+impresora, PC/Send, IR, NVRAM o bootstrap al publicar el repositorio.
+Revisar el [acta histórica](docs/VONTAR_STABLE_PUBLIC_20261018.md)
+y los [resultados antiguos](docs/STABLE_IMPLEMENTATION_STATUS.md)
+para separar pruebas de código y de interfaz.
+
+- **Pendiente de cumplimiento:** política posterior de DictROM
+  exclusivamente mediante payload bootstrap; el menú original
+  conserva su vía directa anterior.
+- **Pendiente:** estado NVRAM tras cierre abrupto del núcleo.
+- **Pendiente:** actualización AS2K de despertar por PC Vontar.
+- **Pendiente:** prueba interactiva pospublicación de la integración
+  GTK completa en Surf.
+
+## Distribución
+
+GitHub incluye **fuentes, scripts y documentación**, no binarios
+compilados, firmware, DictROM, payloads propietarios, archivos
+NVRAM/RAM, capturas ni datos del usuario. Licencia raíz
+`LICENSE` y términos de terceros conservados; no crear
+adjuntos binarios públicos sin revisión legal/proveniencia.

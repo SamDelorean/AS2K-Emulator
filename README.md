@@ -1,92 +1,81 @@
-# AS2K Emulator
+# AS2K Emulator — AlphaSmart 2000 Stable
 
-A compact, reproducible emulator for the AlphaSmart 2000, derived from the MAME emulation engine and focused on stable human testing and firmware development.
+**Publicación de código fuente Stable: 2026-10-21.** Distribución pública
+del emulador AlphaSmart 2000 (MAME reducido) con **una estructura de producto
+común a ASPRO Stable**, sin mezclar el producto con `as2k-diag`.
 
-## Status
+[**Producto Stable, menús e instalación**](stable/README.md) ·
+[**Manifiesto, SHAs y evidencia**](stable/RELEASE_MANIFEST.md) ·
+[**Estándar de publicación de nuestros emuladores**](docs/STABLE_RELEASE_STANDARD.md) ·
+[**Referencia histórica Vontar aprobada**](stable/docs/VONTAR_STABLE_PUBLIC_20261018.md)
 
-**R0 — baseline and dependency-closure phase.**
+## Productos y plataformas
 
-The first milestone is a dedicated `as2k` subtarget that:
+| Plataforma | Núcleo y uso | Estado documentado |
+| --- | --- | --- |
+| **Vontar — Armbian AArch64** | Versión reducida `asma2k`, gestor de sesión GTK completo | Referencia instalada aprobada el 18-oct-2026; compilación/instalación ya existentes |
+| **Surf — Surface RT / postmarketOS ARMv7/musl** | Compilación **nativa en Surf**, `make -j1`, compatibilidad `bx` musl v2 | Compilación nativa PASS documentada el 17-oct; instalación AS2K presente en Surf; integrador de sesión de este paquete corregido **sin nueva ejecución** |
+| **as2k-diag** | Banco de diagnóstico independiente | No se publica ni instala como Stable |
 
-- builds independently from the full MAME target;
-- passes `-validate`;
-- boots a user-selected AlphaSmart 2000 firmware image;
-- uses v3.1.4 as the reference validation baseline without hard-wiring the emulator to that version;
-- preserves the validated keyboard, 40×4 LCD, NVRAM, PC Send and printing behaviour;
-- demonstrates the expected reduction in clean-build time, incremental-build time and disk use.
+El núcleo Stable no se sustituye por el emulador de pruebas. Tampoco se
+recompila desde T640 para Surf ni se fuerza una nueva compilación al publicar
+esta estructura. La rama histórica
+`release/vontar-stable-public-20261018` se conserva **sin modificaciones**.
 
-No emulator source has been imported into this repository yet. Code will enter only through reviewed, traceable commits after its dependency and license metadata have been verified.
+## Menús e integración GTK completos
 
-## Two functional variants
+El producto contiene **dos componentes complementarios**:
+`stable/frontend/as2k_ui.py` (LCD, teclado y menús base) y
+`stable/frontend/as2k_session.py` (gestor real de Vontar, configuración
+persistente, bootstrap, display integrado y opciones de sesión).
 
-Only two functional AS2K emulator variants are intended on the development machine:
+Menús originales: **Archivo** (Firmware/DictROM, bootstrap, capturas,
+grabación y salir); **Máquina** (reinicio, PC, impresora, infrarrojo,
+selección de inicio); **Ver** (100 %, 150 %, 200 %, pantalla completa,
+ventana integrada/SDL); **Configuración** (ROM, NVRAM, estados y salidas);
+**Ayuda** (atajos y acerca de). LCD de 240×36, teclado virtual,
+enlace PC/Send, salida PCL/CUPS-PDF y actividad IR.
 
-1. **AS2K stable** — built from this public repository and installed correctly in the system as the normal emulator and human-test bench. It must be reachable through an application-menu launcher and the stable `as2k` command.
-2. **`as2k-diag`** — private instrumented TestLab build for Commander, development and automated diagnostics. It remains executable from its private Git working directory through a project-local launcher and is not installed system-wide.
+El lanzador `/usr/local/bin/as2k` abre
+`/usr/local/libexec/as2k/frontend/as2k_session.py`, no
+el MAME genérico ni una UI de diagnóstico.
+Los activos privados permanecen fuera de Git.
 
-They must share the same hardware behaviour, image formats and stable regression contract. Instrumentation must not silently change emulated behaviour. See [docs/RUNTIME_VARIANTS.md](docs/RUNTIME_VARIANTS.md) and [docs/INSTALLATION_AND_LAUNCHERS.md](docs/INSTALLATION_AND_LAUNCHERS.md).
+## Código nativo por equipo
 
-## Intended stable scope
+- [Vontar — constructor e instalador](stable/install-as2k-vontar.sh):
+  patrón AS2K aprobado, único driver `asma2k`, GTK completo.
+- [Surf — build e instalación](stable/platform/surf/README.md):
+  procedimiento nativo ARMv7 con corrección musl v2, respaldos, `-j1`,
+  separación build/install y sin compilación cruzada.
 
-- AlphaSmart 2000 only.
-- 40×4 LCD using two KS0066-compatible controllers.
-- Complete keyboard behaviour, F1–F8 files and sleep/wake.
-- Persistent 128 KiB NVRAM and required RAM/DictROM banking.
-- Mouse-accessible menus and controls.
-- Interactive firmware selection dialog; no single firmware version is embedded or required by design.
-- Load, save and clear RAM/NVRAM images.
-- Save and restore emulator state.
-- Integer display scaling for legible multiples of the original display.
-- Normal firmware boot.
-- Direct DictROM bootstrap that reproduces only the required bootstrap preconditions; it is not an arbitrary PC jump and never modifies the selected ROM or DictROM images.
-- PC Send text output.
-- Stable printing through CUPS/PDF for human tests.
-- Separate configuration and mutable-data locations from `as2k-diag`.
+**Precaución:** la publicación documenta fuentes/instaladores; no realiza
+nuevas intervenciones en los equipos ni es prueba de que una versión
+modificada del instalador ya se haya ejecutado allí. El manifiesto distingue
+PASS ejecutados, código de integración corregido y pruebas pendientes.
 
-Low-level printer capture, memory tracing, probes, automated harnesses and Commander-specific controls belong in the private `as2k-diag` TestLab environment.
+## Cambio de política y limitaciones
 
-## Firmware and private data
+Se conserva la **interfaz Vontar realmente aprobada**, incluida su opción
+histórica `Arranque directo desde DictROM`. La política posterior del
+proyecto requiere que la transición a DictROM ocurra **mediante payload
+bootstrap**, sin una vía directa separada; esa reconciliación funcional y
+la simplificación cuidadosa de menús están pendientes. **No** se cambió
+el núcleo silenciosamente al publicar.
 
-This repository does **not** contain and will not distribute:
+También permanece pendiente la validación específica de la actualización
+AS2K de despertar por PC en Vontar, cuya compilación posterior falló al
+enlazar. Esta versión no la presenta como instalada.
 
-- AlphaSmart firmware or DictROM dumps;
-- patched or derived firmware images;
-- NVRAM/RAM images or saved states;
-- private traces, document contents or diagnostic captures.
+## Licencias y privacidad
 
-Users must supply firmware and DictROM images they are legally entitled to use. Runtime selection and bootstrap features operate on those external images without modifying them.
+Código fuente público con los avisos de MAME y
+[licencia del proyecto](LICENSE). Sin firmware, DictROM, payload binario,
+NVRAM/SRAM, documentos del usuario, capturas ni ejecutables públicos
+con ROM incorporada. Los usuarios suministran por separado las imágenes
+que estén autorizados a utilizar.
 
-## Repository and disk policy
-
-The full MAME tree remains available for preparing clean upstream contributions. Existing Git repositories, Git worktrees and Git-backed project folders are preserved; this migration does not authorize deleting them.
-
-Disk reduction targets derived material only: installed duplicate executables, build directories, object files, caches, temporary files, copied runtime data and other reproducible artifacts. Cleanup occurs only after inventory and reproducibility checks.
-
-## Relationship to MAME
-
-This is an independent reduced distribution based on selected MAME components. It is not affiliated with or endorsed by the MAME project or the original AlphaSmart manufacturers.
-
-Upstream-quality hardware fixes should still be prepared separately in the full MAME tree and offered to MAME when appropriate.
-
-## License
-
-The combined project is distributed under **GPL-2.0-or-later**. Imported files retain their original copyright, attribution and SPDX license identifiers. A large part of the expected AS2K dependency closure is BSD-3-Clause licensed, but the aggregate distribution follows the compatible MAME project license.
-
-See [LICENSE](LICENSE), [docs/LEGAL_SCOPE.md](docs/LEGAL_SCOPE.md), [docs/DEPENDENCY_PROVENANCE.md](docs/DEPENDENCY_PROVENANCE.md) and [docs/KNOWLEDGE_LIBRARY.md](docs/KNOWLEDGE_LIBRARY.md).
-
-
-## Cross-project direction update — 2026-10-02
-
-The authoritative Profile 1 product direction is maintained in:
-
-`SamDelorean/AS2K-V3.14.x/docs/PROFILE1_GLOBAL_COMPASS_RUNTIME_OS_20261002.md`
-
-Current relationship:
-
-- Profile 1 G2.9 DebugTool emulator freeze = CLOSED/PASS.
-- Profile 1 is now in G3: Runtime Supervisor + DynFS runtime binding + application dispatcher + Writer v0 + Writer/DebugTool multi-app proof + runtime ABI freeze.
-- The canonical diagnostic/TestLab environment remains infrastructure for validating G3-G6.
-- The reduced/stable emulator may continue its own closure in parallel, but its unfinished packaging/build work must not block or redirect Profile 1 G3 unless a concrete emulator deficiency becomes a direct dependency.
-- This repository defines emulator behavior/infrastructure only; it does not define the Profile 1 application architecture, APPKEY policy, DynFS ownership, or G3-G6 sequencing.
-
-When local emulator documentation conflicts with the current Profile 1 runtime/micro-OS compass on global project direction, the Profile 1 compass controls the product-development sequence.
+[Contrato de UI](stable/docs/UI_CONTRACT.md) ·
+[Antecedentes de compilación](stable/docs/STABLE_IMPLEMENTATION_STATUS.md) ·
+[Proveniencia](stable/docs/DEPENDENCY_PROVENANCE.md) ·
+[Historia de la portada anterior](docs/AS2K_PRE_STABLE_MAIN_README.md)
