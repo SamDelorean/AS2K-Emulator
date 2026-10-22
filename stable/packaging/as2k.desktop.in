@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=AS2K Emulator
+GenericName=AlphaSmart 2000 Emulator
+Comment=Stable AlphaSmart 2000 human-test emulator
+Exec=@PREFIX@/bin/as2k
+TryExec=@PREFIX@/bin/as2k
+Icon=computer
+Terminal=false
+Categories=Utility;Development;
+StartupNotify=true
