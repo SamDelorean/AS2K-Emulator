@@ -165,3 +165,25 @@ ejecutable operativo es todavía el original de SHA `861e976...`.
 **Estado de MV-11 sobre la candidata acumulativa:** `BLOCKED_ROMSET_PRECONDITION`, `MAME_FUNCTIONAL_ATTEMPTS=0`. Esta condición no invalida el PASS histórico. No modificar el pin del job MV-11 por simple sustitución de hash: su preflight e instrumentación requieren verificación de compatibilidad y el arnés del observador ya corregido. La nueva regresión solo debe cubrir los callbacks modificados y no repetir indiscriminadamente campañas anteriores.
 
 **Ruta de desbloqueo:** reutilizar el romset privado AS2K previamente autorizado y su `rompath` original; ejecutar primero `-verifyroms` y después una única campaña dirigida sobre el mismo `as2kdiag` con NVRAM y logs separados, sin copiar ni versionar las ROM. No fabricar pruebas sintéticas de SCI o teclado. Resolver los resultados por manifest SHA, trazas reales HC11 y ausencia de errores Lua.
+
+## Rectificación documental inmediata — ROM AS2K localizadas en PRIVATE (22-oct-2026, 11:10 México)
+
+**La clasificación anterior `BLOCKED_ROMSET_PRECONDITION` queda RESUELTA y SUPERADA; era un error de búsqueda de ruta, NO ausencia del firmware.** La operación anterior invocó `as2kdiag -verifyroms asma2k` sin `-rompath` y solo inspeccionó `mame-as2k/roms` y algunas rutas privadas; omitió el directorio canónico `/home/spc/Projects/alphasmart/private/roms/as2k/`. El usuario indicó correctamente que las ROM estaban en `private`.
+
+**Verificación ejecutada en la T** sobre el mismo DIAG `ab5d18fce700770a7aff2d16bd53f8bd8eb5e78241558b595031abe3a47fbd70`:
+
+```sh
+/home/spc/Projects/alphasmart/mame-as2k/as2kdiag \
+ -rompath /home/spc/Projects/alphasmart/private/roms/as2k \
+ -verifyroms asma2k
+```
+
+Resultado real: **exit 0**, `romset asma2k is best available`, `1 romsets found, 1 were OK`. Archivo: `private/roms/as2k/asma2k.zip` (147339 bytes, permisos privados). ZIP stock homólogo `private/roms/as2k/stock/asma2k.zip`.
+
+Contiene y se validaron SHA-1: firmware 3.1.4 `e0b777dc68c671c31ba808e214fb9d2573b9a853`, firmware 3.0.8 `97878819188a1ec40052fbce9d5a5059728d5aec`, DictROM `033094bb850c614008b4ecc2eefbcb01b8a2bcda`, KS0066 F00 `65cf075a988cdcbb316b9afdd0529b374a1a65ec`, KS0066 F05 `0196e871584ee5d370856e7307c0f9d1466e3e51`. MAME sigue indicando `NEEDS REDUMP` para F05; eso no bloquea la verificación.
+
+El archivo Stage0 opcional, `as2k_stage0.bin`, 27 bytes, SHA-1 `ab76eafa386311b2ab70ea644345fb15767e908f`, está en `private/roms/diagnostic/as2k/` y NO se incorporó al ZIP. La advertencia `NOT FOUND BUT OPTIONAL` es esperada con ese `-rompath`. Una ejecución de MV-11 que requiera Stage0 debe respetar sus fuentes privadas y arnés originales; no asumir que el simple `-verifyroms` prueba bootstrap funcional.
+
+**Estado nuevo:** `ROMSET_PREFLIGHT_PASS / MV11_CUMULATIVE_FUNCTIONAL_PENDING`; intentos funcionales nuevos todavía **0**. Histórico MV-11 `STATUS=PASS` permanece válido para el binario histórico correspondiente. No se cambiaron las ROM, no se copiaron a repositorios públicos ni se tocaron Vontar, Surf o Stable. Evidencia de este preflight: `~/.local/share/alphasmart/audits/as2k/diag-cumulative-20261022/private-rom-verify.log` en T.
+
+**Regla operativa añadida:** antes de declarar ausente una ROM AS2K, inspeccionar `/home/spc/Projects/alphasmart/private/roms/as2k/` y el subárbol `private/roms/diagnostic/as2k/` con `-rompath` explícito; no iniciar búsquedas de donantes ni reconstruir ZIP ya existente.
