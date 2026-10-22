@@ -1,6 +1,8 @@
 # AS2K-DIAG T640 — consolidación acumulativa, auditoría y handoff (22-oct-2026)
 
-**Estado actual (actualización de las 10:36 de México): `CANDIDATE_STATIC_PASS_IR_RAM_RAM2_PC / FUNCTIONAL_PENDING / COMPLETE_INSTRUMENTATION_PENDING`.**
+**Estado actual (actualización de las 10:50 de México): `CANDIDATE_STATIC_PASS_CUMULATIVE_PASSIVE_SDK_SET2_IR_RAM2_PC / FUNCTIONAL_PENDING`.**
+
+La etapa de las 10:36, `CANDIDATE_STATIC_PASS_IR_RAM_RAM2_PC`, es ahora un resultado histórico intermedio.
 
 **Historial inicial del 22-oct (antes de la compilación exitosa):** `CANDIDATE_STATIC_MERGE_PREPARED / BUILD_PENDING / FUNCTIONAL_PENDING`.
 La consolidación **NO está terminada**. Ningún resultado histórico PASS se revalidó ni se alteró. Alcance exclusivamente T640; Vontar y Surface RT no se tocaron.
@@ -117,3 +119,39 @@ ejecutable operativo es todavía el original de SHA `861e976...`.
 - **Evidencia T en carpeta privada preexistente:** `~/.local/share/alphasmart/audits/as2k/diag-cumulative-20261022/` con `build-20261022-b2.log`, `build-ram2-pc.log`, `validate.log`, `validate-independent.log`, `listfull.txt`, `binary-strings.txt` y `build.status`, respaldos de rollback de fuentes/ejecutable. Estos no son entornos MAME adicionales y son transitorios hasta aceptación final. No almacenar firmware privado en Git.
 
 **Próximo incremento inequívoco:** 1) reconciliar instrumentación SDK/ZPSD/Set2 con activación por escenario, sin perder callbacks PM-R4/IR/PC; 2) compilar incrementalmente el único `as2kdiag`; 3) validar estáticamente y pruebas dirigidas DIAG solo sobre cobertura modificada; 4) fijar SHA/producto y retirar respaldos ejecutables antiguos cuando haya aceptación. No recompilar Stable.
+
+
+## Continuación 10:40–10:50 — Set 2, SDK/ZPSD pasivo y cierre de integridad
+
+**Trabajo ejecutado solamente en T640**, en el mismo `/home/spc/Projects/alphasmart/mame-as2k`, sin nuevos árboles, instancias ni modificaciones de Stable/Vontar/Surf. Las fuentes acumuladas siguen en la rama local `as2k-mame0289-dev` sobre HEAD `a4b99b1a700a1d70b93a798fe7833e4cae28c137`; las modificaciones de código NO se han publicado como commit de esa rama y no deben confundirse con las actualizaciones de esta documentación.
+
+### 1. PC físico y teclado Set 2 integrado
+
+- Se reutilizaron desde `mame-pr16171-fix` las tablas Set2, secuencias E0/F0/E1, 11 bits con bit de paridad, estados de Shift/Ctrl/Alt/CapsLock, `Alt+0ddd` con perfil Windows CP1252, escritura UTF-8 y reglas de cierre de sesión.
+- El observador se conecta **a los flancos físicos** PD0 ascendente / PD1 invertido, dentro de `asma2k_port_d_w`, conservando los callbacks de impresora e IrDA existentes. No finge teclas ni salta a direcciones ROM para generar caracteres.
+- Está **desactivado por defecto**. Se habilita únicamente con `AS2K_DIAG_SET2_SINK` y conexión PC presente mediante `DIAG_PC_ATTACHED` o selector ya situado en modo PC. La salida se llama `as2kdiag-set2.txt`, para no sobrescribir `send.txt` histórico. Su prueba funcional real todavía está pendiente.
+- Un primer intento compiló con errores por tabla CP1252 omitida e indentación; se hizo rollback. El segundo intento incluyó ambos ajustes y pasó compilación, `-validate`, lista de controladores y comprobación de marcadores. SHA de la candidata intermedia: `edbbef0c94dcf95bdfb31be50ffd4d30ba70ded993f391347f020d7d43e76f2c`.
+
+### 2. Instrumentación histórica SDK/ZPSD reincorporada sin activar programación
+
+- Se recuperaron **11 puntos de observación** de los contratos antiguos SDK/Payload: `0x87F5`, `0x93B6`, `0xA3D6`, `0xA44B`, `0x4066`, `0x008A`, `0x00A8`, `0x00AE`, `0x00C5`, `0x00CF`, `0x008D`, registrando `AS2K_LIBSDK_PASSIVE` en el callback de instrucciones ya usado por Gate1B, sin instalar uno nuevo.
+- Se incorporaron observadores de memoria **pasivos**, hasta 8 eventos por dirección/sentido, para `0x3003`, `0x3005`, `0x3007`, `0x3011` con marcador `AS2K_ZPSD_PASSIVE_MMIO`. No cambian los bytes, no inyectan valores ni simulan CPBF, VPP, PSEN o programación física. **Son direcciones observadas**, no prueba de que el ZPSD real esté modelado.
+- Ambos se activan solo con `AS2K_DIAG_SDK_TRACE`. Gate 1A continúa `set_as2k_gate1a_probe(false)`. Las viejas variantes SDK/Payload, que alteraban el entorno para pruebas sintéticas, permanecen en su código fuente histórico y **no forman parte del comportamiento por defecto del nuevo DIAG**.
+
+### 3. Verificación independiente final
+
+- **BUILD PASS**: `make -j3 SUBTARGET=as2kdiag SOURCES=src/mame/skeleton/alphasma.cpp REGENIE=1 USE_QTDEBUG=0` terminó en 0, enlazado exitoso. El núcleo `-validate` también devolvió 0 en una ejecución independiente posterior.
+- **STATIC PASS**: `git diff --check` de tres fuentes 0; todos los 13 contratos estáticos verificados, incluida la presencia de una sola ruta de instruction callback, Gate1A desactivado, control de escenario en Set2/SDK/RAM2/post-IR y los dos controles de conexión separados.
+- **SHA-256 único DIAG vigente**: `ab5d18fce700770a7aff2d16bd53f8bd8eb5e78241558b595031abe3a47fbd70`.
+- **SHA-256 Stable sin cambios**: `7ba52866caf2899a9ffa309a4063a0d1530332e129b5724156ba86caa67b6557`.
+- Un único archivo `as2kdiag` quedó localizado en los proyectos inspeccionados de T. El hecho de que `-listfull` registre `asma2k` y `asmapro` no implica otra instalación.
+- **Parche reversible** completo de las tres fuentes (respecto al HEAD local, incluye modificaciones de DIAG acumuladas), guardado en T en `~/.local/share/alphasmart/audits/as2k/diag-cumulative-20261022/AS2K_DIAG_CUMULATIVE_T640_20261022.patch`. SHA-256: `e59c23a8a9603cdf8beef732dd0d5bf0c91ff61bab500c9b3f5b7b4a88f8d643`, 120,317 bytes. `git apply --reverse --check` PASS; manifiesto JSON junto al parche. Los respaldos temporales adicionales de ejecutables fueron retirados tras la compilación. No contiene ROMs ni datos privados.
+
+### Límites que NO se pueden presentar como PASS
+
+- Todavía **no hay una campaña de regresión funcional unificada** que demuestre todos los subsistemas nuevos en el binario SHA `ab5d18...`.
+- La diferencia con el ejecutable aprobado MV-11 SHA `e0dde298...` continúa sin conciliación de procedencia. La instrumentación de teclado PM-R4 y los marcadores aparecen en la fuente/compilación, pero no sustituyen la prueba.
+- Los modelos **sintéticos** heredados de ZPSD y programación/ATtiny no fueron instalados ni activados, por incompatibilidad con la ruta de trabajo vigente. Solo se integraron **observadores pasivos** compatibles.
+- Una validación estática favorable no demuestra recepción real de tramas PC, impresión, negociación IrDA, accesos ZPSD ni cumplimiento del contrato de bootstrap.
+
+**Estado real:** `CANDIDATE_STATIC_PASS_CUMULATIVE_PASSIVE_SDK_SET2_IR_RAM2_PC / FUNCTIONAL_PENDING`. Conservar íntegro el estado y evitar campañas PASS repetidas salvo cobertura modificada.
