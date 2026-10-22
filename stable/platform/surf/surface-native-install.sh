@@ -55,13 +55,18 @@ for relative in $RELFILES; do
     [ -s "$src" ] || { echo "BLOCKED: missing staged $relative"; exit 3; }
     if [ -e "$PREFIX/$relative" ]; then
         mkdir -p "$BACKUP/$(dirname "$relative")"
-        cp -p "$PREFIX/$relative" "$BACKUP/$relative"
+        # The original Surf script used cp -p as an unprivileged user and
+        # failed attempting to preserve root ownership. Back up exact bytes;
+        # rollback reinstalls via sudo as root with explicit safe permissions.
+        cp "$PREFIX/$relative" "$BACKUP/$relative"
     fi
 done
 restore() {
     for relative in $RELFILES; do
         if [ -f "$BACKUP/$relative" ]; then
-            sudo -n cp -p "$BACKUP/$relative" "$PREFIX/$relative" || :
+            mode=0755
+            case "$relative" in *.desktop|*.txt) mode=0644 ;; esac
+            sudo -n install -o root -g root -m "$mode" "$BACKUP/$relative" "$PREFIX/$relative" || :
         else
             sudo -n rm -f "$PREFIX/$relative" || :
         fi
