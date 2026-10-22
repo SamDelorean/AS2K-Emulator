@@ -155,3 +155,13 @@ ejecutable operativo es todavía el original de SHA `861e976...`.
 - Una validación estática favorable no demuestra recepción real de tramas PC, impresión, negociación IrDA, accesos ZPSD ni cumplimiento del contrato de bootstrap.
 
 **Estado real:** `CANDIDATE_STATIC_PASS_CUMULATIVE_PASSIVE_SDK_SET2_IR_RAM2_PC / FUNCTIONAL_PENDING`. Conservar íntegro el estado y evitar campañas PASS repetidas salvo cobertura modificada.
+
+## Comprobación de requisitos para regresión MV-11 sobre DIAG acumulativo (22-oct-2026, ~11:00 México)
+
+**Resultado documental MV-11 original:** se recuperó en Drive el registro de ejecución `000_as2k_probe_mv11_l3_critical_input_OBSERVER_FIX_20261020_20261021T031249Z.summary.txt` (ID `1G-X4vD0lU69EJSOSrUaL_Cw5F4PxboTN`). Reporta `STATUS=PASS`, `EXIT_CODE=0`. El documento de repin `MV11_REPIN_AS2KDIAG_20261020.md` (ID `1CO_Qh9m-yyPI3R8trcWzN73xVOolcgMU`) ancla el ejecutable histórico aprobado con SHA-256 `e0dde298b0f817d22d324c800418bb000c1e81e92c69d201eee0663f6d406220`; la evidencia de observer fix anterior (ID `1wQT3sY4WTv74WHIwWas46ZnhMSfeAO8f`) documenta la corrección del observador. No extrapolar ese PASS al nuevo binario.
+
+**Auditoría real sobre la T:** el ejecutable DIAG acumulativo sigue exactamente en SHA-256 `ab5d18fce700770a7aff2d16bd53f8bd8eb5e78241558b595031abe3a47fbd70`. El Stable mantiene `7ba52866caf2899a9ffa309a4063a0d1530332e129b5724156ba86caa67b6557`. MAME lista para `asma2k` la ROM 3.1.4, 3.0.8, DictROM, Stage0 y KS0066; sin embargo, `as2kdiag -verifyroms asma2k` responde **`romset "asma2k" not found!`** bajo las rutas configuradas en T. En `mame-as2k/roms` solo está `dir.txt`. La exploración acotada de fuentes privadas ya conocidas no encontró un `asma2k.zip` adecuado; no se copiaron ROMs ni se creó un nuevo árbol. La presencia de una ROM KS0066 en la carpeta privada **ASPRO** no basta para ejecutar AS2K y no autoriza mezclar los productos.
+
+**Estado de MV-11 sobre la candidata acumulativa:** `BLOCKED_ROMSET_PRECONDITION`, `MAME_FUNCTIONAL_ATTEMPTS=0`. Esta condición no invalida el PASS histórico. No modificar el pin del job MV-11 por simple sustitución de hash: su preflight e instrumentación requieren verificación de compatibilidad y el arnés del observador ya corregido. La nueva regresión solo debe cubrir los callbacks modificados y no repetir indiscriminadamente campañas anteriores.
+
+**Ruta de desbloqueo:** reutilizar el romset privado AS2K previamente autorizado y su `rompath` original; ejecutar primero `-verifyroms` y después una única campaña dirigida sobre el mismo `as2kdiag` con NVRAM y logs separados, sin copiar ni versionar las ROM. No fabricar pruebas sintéticas de SCI o teclado. Resolver los resultados por manifest SHA, trazas reales HC11 y ausencia de errores Lua.
