@@ -21,7 +21,11 @@ case "${ID:-}:${VERSION_CODENAME:-}" in
     *) fail "SO no previsto: ${ID:-?} ${VERSION_CODENAME:-?}" ;;
 esac
 [ -d "$HOME/Projects" ] || fail "Falta $HOME/Projects (SD); sin fallback a disco interno"
-[ -d "$ROOT/.git" ] || fail "Ejecutar desde clon Git de AS2K-Emulator"
+# This canonical Stable package lives under <git-checkout>/stable/.  The
+# previous Vontar script assumed its own directory was the Git root.
+GIT_TOP=$(git -C "$ROOT" rev-parse --show-toplevel 2>/dev/null || :)
+[ -n "$GIT_TOP" ] || fail "Ejecutar desde clon Git de AS2K-Emulator"
+case "$ROOT" in "$GIT_TOP"|"$GIT_TOP"/stable) ;; *) fail "Stable fuera del clon canónico" ;; esac
 [ -z "$(git -C "$ROOT" status --porcelain)" ] || fail "Hay cambios locales AS2K; se preservan"
 [ -f "$ROOT/scripts/build-stable-core.sh" ] || fail "Falta builder reducido"
 [ -f "$ROOT/scripts/install-stable.sh" ] || fail "Falta instalador estable"
