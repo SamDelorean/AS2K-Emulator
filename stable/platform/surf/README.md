@@ -5,7 +5,15 @@ archivos `as2k_ui.py` y `as2k_session.py` del checkout actual de
 `stable/`, ejecuta la regresión automática `tests/test_view_scale.py`
 antes de instalar y comprueba sus bytes después. Esto evita reinstalar
 el defecto del menú Ver (100/150/200). Es una mejora del paquete fuente:
-**no constituye una reinstalación en Surf ni un PASS GTK interactivo**.
+**describe la salvaguarda del instalador, sin implicar por sí misma una reinstalación**.
+
+**Hotfix ejecutado en Surf el 22-oct-2026:** se sustituyeron solamente los dos
+Python del frontend, previamente comprobados contra el baseline anterior,
+con respaldo y coincidencia de hashes finales. Resultado
+`AS2K_STABLE_VIEW_100_150_200_HEADLESS_PASS` y
+`SURF_SCALE_HOTFIX_INSTALLED_PASS`. Sin recompilación del núcleo ni reinicio
+forzado. Sigue pendiente la prueba visual al cerrar y reabrir GTK.
+[Evidencia detallada](../../docs/SURF_VIEW_SCALE_FIX_20261022.md).
 
 ## Procedimiento realmente recuperado
 
@@ -68,7 +76,8 @@ ROM/NVRAM y no cambia kernel, Wi-Fi o particiones.
 
 La construcción musl v2 y el ejecutable de la Surface tienen
 evidencia PASS. El ajuste de este lanzamiento para instalar
-el gestor GTK completo se ha publicado **sin nueva prueba
-interactiva sobre Surf**; debe validarse antes de sustituir
-una aplicación ya operativa. No atribuirse aprobación funcional
+el gestor GTK completo se publicó inicialmente **sin nueva prueba
+interactiva sobre Surf**. Después se instaló únicamente el hotfix de escala
+sobre los dos Python del frontend, con PASS estático y de instalación;
+queda por validar su efecto visual en sesión GTK nueva. No atribuirse aprobación funcional
 de DictROM/PC/Send/impresión a este cambio de instalador.
