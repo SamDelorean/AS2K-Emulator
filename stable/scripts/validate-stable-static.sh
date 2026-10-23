@@ -63,6 +63,7 @@ python3 -B "$ROOT/tests/test_view_scale.py"
 python3 -B "$ROOT/tests/test_virtual_button_rows.py"
 # Native NVRAM must survive a clean GTK-requested MAME exit.
 python3 -B "$ROOT/tests/test_nvram_orderly_shutdown.py"
+python3 -B "$ROOT/tests/test_nvram_file_selection.py"
 
 grep -F '@PREFIX@/bin/as2k' "$ROOT/packaging/as2k.desktop.in" >/dev/null \
     || fail "desktop template does not target installed stable launcher"
