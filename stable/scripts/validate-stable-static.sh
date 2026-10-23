@@ -59,6 +59,8 @@ sh "$ROOT/scripts/validate-ui-static.sh"
 # Gate future Stable installations against the no-op 100/150/200% menu.
 # Headless AST-based test exercises actual GTK drawing/selection methods.
 python3 -B "$ROOT/tests/test_view_scale.py"
+# Preserve the user-approved centered 2x8 key layout and physical Escape.
+python3 -B "$ROOT/tests/test_virtual_button_rows.py"
 
 grep -F '@PREFIX@/bin/as2k' "$ROOT/packaging/as2k.desktop.in" >/dev/null \
     || fail "desktop template does not target installed stable launcher"
