@@ -125,3 +125,23 @@ Native isolated create/reopen tests and GTK-manager installation passed on
 both Surf and VONTAR on 22 October 2026. A new GUI process is required to
 use the updated Python; final user-document acceptance remains pending.
 Manual selection of alternative NVRAM files belongs to a future increment.
+
+## Native NVRAM file selection (RAM-02, 22 October 2026)
+
+The already existing MAME 128 KiB NVRAM support is retained. The default
+image lives at `~/.local/share/as2k/nvram/asma2k/nvram` and is initialized
+only if absent. A chosen 131072-byte file can be opened via
+`Archivo → Abrir archivo RAM/NVRAM…`, and
+`Archivo → Usar RAM predeterminada` restores the normal image.
+The last external choice is persisted as `ram_file` in `session.json`.
+
+Each external RAM is mounted through a private MAME-compatible work
+directory; a clean exit synchronizes bytes atomically back to the chosen file,
+with one recovery backup, fingerprint conflict protection, and a pending marker
+that prevents overwriting unsaved workspace contents after an abnormal exit.
+It does not add a new RAM format or alter the core.
+
+Static/isolated regression:
+`stable/tests/test_nvram_file_selection.py`, in addition to the
+`test_nvram_orderly_shutdown.py` gate. Deployed with PASS on VONTAR and Surf;
+GUI live-document acceptance is pending.
