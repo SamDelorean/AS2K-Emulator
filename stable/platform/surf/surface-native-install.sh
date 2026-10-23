@@ -30,6 +30,11 @@ for f in "$RELEASE_ROOT/frontend/as2k_ui.py" \
          "$RELEASE_ROOT/packaging/as2k.desktop.in"; do
     [ -s "$f" ] || { echo "BLOCKED: missing Stable release resource $f"; exit 3; }
 done
+# Preflight canonical frontend, not older pinned ARMv7 source.
+python3 -B "$RELEASE_ROOT/tests/test_view_scale.py" || {
+    echo "BLOCKED: Stable LCD 100/150/200 regression failed"
+    exit 3
+}
 mkdir -p "$STAGE/usr/local/libexec/as2k/frontend" \
          "$STAGE/usr/local/bin" "$STAGE/usr/local/share/applications"
 install -m 0755 "$BIN" "$STAGE/usr/local/libexec/as2k/as2k-bin"
@@ -104,6 +109,8 @@ python3 -B -c 'import pathlib,sys; p=pathlib.Path(sys.argv[1]); compile(p.read_b
     "$PREFIX/libexec/as2k/frontend/as2k_ui.py"
 python3 -B -c 'import pathlib,sys; p=pathlib.Path(sys.argv[1]); compile(p.read_bytes(),str(p),"exec")' \
     "$PREFIX/libexec/as2k/frontend/as2k_session.py"
+cmp -s "$RELEASE_ROOT/frontend/as2k_ui.py" "$PREFIX/libexec/as2k/frontend/as2k_ui.py"
+cmp -s "$RELEASE_ROOT/frontend/as2k_session.py" "$PREFIX/libexec/as2k/frontend/as2k_session.py"
 STEP=READY
 echo "SURFACE_INSTALL_PASS: native ARMv7 Stable core and GTK"
 echo "BACKUP=$BACKUP"
