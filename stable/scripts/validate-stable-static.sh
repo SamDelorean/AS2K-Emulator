@@ -56,7 +56,7 @@ for name in sys.argv[1:]:
 PY_STATIC
 sh "$ROOT/scripts/validate-ui-static.sh"
 
-# Gate future Stable installations against the no-op 100/150/200% menu.
+# Gate future Stable installations against incorrect 100/200/300% zoom.
 # Headless AST-based test exercises actual GTK drawing/selection methods.
 python3 -B "$ROOT/tests/test_view_scale.py"
 # Preserve the user-approved centered 2x8 key layout and physical Escape.
