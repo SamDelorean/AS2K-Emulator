@@ -80,7 +80,7 @@ def test():
     win = Window()
     win._set_scale = lambda factor: set_scale(win, factor)
     for factor, expected_size in (
-        (1.0, (240, 36)), (1.5, (360, 54)), (2.0, (480, 72))
+        (1.0, (240, 36)), (2.0, (480, 72)), (3.0, (720, 108))
     ):
         active = SimpleNamespace(get_active=lambda: True)
         select(win, active, factor)
@@ -91,12 +91,28 @@ def test():
         assert canvas.ratio == factor, (factor, canvas.ratio)
     assert win.resizes == 3
 
+    # 150% is no longer a selectable or accepted discrete scale.
+    try:
+        set_scale(win, 1.5)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("Legacy 150% scale must be rejected")
+    assert win.resizes == 3
+
+    source = ast.parse(UI.read_text())
+    window = next(x for x in source.body if isinstance(x, ast.ClassDef) and x.name == "AS2KWindow")
+    build_menu = next(x for x in window.body if isinstance(x, ast.FunctionDef) and x.name == "_build_menu_bar")
+    menu_source = ast.get_source_segment(UI.read_text(), build_menu)
+    assert '(("100 %", 1.0), ("200 %", 2.0), ("300 %", 3.0))' in menu_source
+    assert '"150 %"' not in menu_source
+
     # Gtk can allocate more space than the size request. The selected zoom
     # must still govern painting instead of stretching to the spare space.
     win.lcd_area.alloc = SimpleNamespace(width=960, height=288)
     canvas = Cairo()
     draw(win, win.lcd_area, canvas)
-    assert canvas.ratio == 2.0
+    assert canvas.ratio == 3.0
 
     # When the widget is constrained, shrink to fit rather than clipping.
     win.lcd_area.alloc = SimpleNamespace(width=300, height=45)
@@ -112,14 +128,14 @@ def test():
     toggle_fullscreen(win, SimpleNamespace(get_active=lambda: False))
     canvas = Cairo()
     draw(win, win.lcd_area, canvas)
-    assert canvas.ratio == 2.0
+    assert canvas.ratio == 3.0
     assert win.fullscreen_calls == [True, False]
 
     session = SESSION.read_text()
     assert 'self._scale_menu_items[2.0].set_active(True)' in session
     assert 'self.lcd_area.set_size_request(ui.LCD_WIDTH * 2' not in session
     assert 'self._scale_menu_items[scale] = item' in UI.read_text()
-    print("AS2K_STABLE_VIEW_100_150_200_HEADLESS_PASS")
+    print("AS2K_STABLE_VIEW_100_200_300_HEADLESS_PASS")
 
 
 if __name__ == "__main__":
