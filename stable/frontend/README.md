@@ -109,3 +109,19 @@ every button uses the same shared horizontal SizeGroup and a minimum request
 of 72×34 GTK logical pixels; longer system fonts can expand all buttons
 together without truncating the lower labels. Installed on both VONTAR and
 Surf with test/installation PASS, pending GUI reopen to visually confirm.
+
+## Persistent NVRAM regression fix (22 October 2026)
+
+Stable uses MAME's existing 128 KiB NVRAM image at
+`~/.local/share/as2k/nvram/asma2k/nvram`. A normal MAME exit saves the
+image and MAME reloads it automatically on the next launch. The GTK manager
+now requests a native MAME exit using the already-supported Lua autoboot
+interface, and waits for completion. It does **not** send SIGTERM/SIGKILL.
+Unexpected failure, timeout or an invalid final image blocks a claim of
+successful save. No MAME recompilation or additional memory format was needed.
+
+Headless regression: `stable/tests/test_nvram_orderly_shutdown.py`.
+Native isolated create/reopen tests and GTK-manager installation passed on
+both Surf and VONTAR on 22 October 2026. A new GUI process is required to
+use the updated Python; final user-document acceptance remains pending.
+Manual selection of alternative NVRAM files belongs to a future increment.
