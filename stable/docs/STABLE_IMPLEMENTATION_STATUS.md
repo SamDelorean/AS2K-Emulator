@@ -309,3 +309,14 @@ NVRAM subsystem successfully and must not be redesigned or mixed with Stable.
 **State: ROOT_CAUSE_STATIC_IDENTIFIED; PATCH_NOT_APPLIED;
 PERSISTENCE_RUNTIME_NOT_YET_VALIDATED.** A focused close/reopen test with a
 non-sensitive dummy NVRAM is sufficient once the shutdown behavior is corrected.
+
+## RAM-01 — recuperación ejecutada de persistencia nativa (22-oct-2026)
+
+Esta sección **sustituye el estado STATIC_FINDING / PATCH_NOT_APPLIED** de la sección anterior; dicha sección queda conservada como diagnóstico histórico.
+
+- Raíz de la regresión confirmada: `Session.stop()` cerraba bruscamente el hijo MAME. Se reemplazó solo ese ciclo de vida GTK con una solicitud Lua de salida `manager.machine:exit()`, que retorna por `running_machine::nvram_save()`.
+- **Instalado en VONTAR y Surf:** `stable/frontend/as2k_session.py` Git blob `5f5efb5ac3752f0c0aa4679f76fe0cfee858aa90`; `alphasma.cpp` / MAME no modificados.
+- **STATIC PASS:** prueba AST del script, salida, manejo de timeout/salida no cero/archivo ausente sin SIGTERM ni SIGKILL; sintaxis Python PASS.
+- **NATIVE RUNTIME PASS (aislado):** ambas máquinas crearon automáticamente NVRAM de 131072 bytes tras salida normal, y efectuaron un segundo arranque y cierre conservando el mismo archivo. Sin acceso de escritura a la RAM de trabajo real, ROM o DictROM.
+- **GUI INTERACTIVE PENDING:** tras reapertura del GTK instalado, realizar una comprobación humana mínima de documento que sobrevive cierre y reapertura. El selector de RAM particular no forma parte del presente incremento.
+- Las protecciones de los instaladores ejecutan ahora `tests/test_nvram_orderly_shutdown.py` antes de reemplazar componentes.
