@@ -2,7 +2,9 @@
 
 **Mantenimiento 2026-10-22:** la reparación del menú **Ver →
 100 % / 150 % / 200 %** está incluida en `main` y en la
-rama `release/stable-2026.10.22-vontar-view-scale`. Las instalaciones
+ramas `release/stable-2026.10.22-vontar-view-scale` (primer hotfix)
+y `release/stable-2026.10.22-gtk-scale-install-guard` (instaladores
+protegidos). Las instalaciones
 canónicas comprueban automáticamente el menú antes de copiar el
 frontend, y verifican que el archivo instalado corresponde al probado.
 La actualización GTK no requiere recompilar MAME. En Vontar quedó
