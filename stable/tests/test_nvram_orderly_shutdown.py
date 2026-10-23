@@ -34,7 +34,7 @@ def main():
     assert ".kill(" not in stop_source
     assert 'EXIT_REQUEST.write_text("EXIT\\n"' in stop_source
     assert "self.core.wait(timeout=12)" in stop_source
-    assert "not NVRAM_FILE.is_file()" in stop_source
+    assert "not valid_ram(self.active_nvram)" in stop_source
     assert "NVRAM_BYTES" in stop_source
     assert "atomic_write(EXIT_SCRIPT, EXIT_LUA)" in start_source
     assert '"-autoboot_script", str(EXIT_SCRIPT)' in start_source
@@ -57,9 +57,9 @@ def main():
         nvram = home / "nvram" / "asma2k" / "nvram"
         size = 0x20000
         symbols = {
-            "EXIT_REQUEST": request, "NVRAM_FILE": nvram,
-            "NVRAM_BYTES": size, "subprocess": subprocess,
-            "RuntimeError": RuntimeError,
+            "EXIT_REQUEST": request, "NVRAM_BYTES": size,
+            "valid_ram": lambda path: path.is_file() and path.stat().st_size == size,
+            "subprocess": subprocess, "RuntimeError": RuntimeError,
         }
         exec(compile(ast.Module(body=[stop], type_ignores=[]), str(SOURCE), "exec"), symbols)
         run_stop = symbols["stop"]
@@ -89,7 +89,8 @@ def main():
             def kill(self):
                 raise AssertionError("SIGKILL is forbidden")
 
-        successful = SimpleNamespace(core=Core("ok"), log=io.StringIO())
+        successful = SimpleNamespace(core=Core("ok"), log=io.StringIO(),
+                                     active_nvram=nvram, external_ram=None)
         run_stop(successful)
         assert successful.core is None and successful.log is None
         assert nvram.stat().st_size == size
@@ -97,7 +98,8 @@ def main():
         for case in ("timeout", "bad", "missing"):
             request.unlink(missing_ok=True)
             nvram.unlink(missing_ok=True)
-            candidate = SimpleNamespace(core=Core(case), log=io.StringIO())
+            candidate = SimpleNamespace(core=Core(case), log=io.StringIO(),
+                                        active_nvram=nvram, external_ram=None)
             try:
                 run_stop(candidate)
             except RuntimeError:
