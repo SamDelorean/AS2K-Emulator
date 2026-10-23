@@ -185,13 +185,17 @@ class AS2KWindow(Gtk.ApplicationWindow):
         key_scroller.set_margin_start(8)
         key_scroller.set_margin_end(8)
         key_scroller.set_margin_bottom(8)
-        keys = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4)
-        key_scroller.add(keys)
-        for label, command in self._virtual_keys():
-            button = Gtk.Button(label=label)
-            button.set_can_focus(False)
-            button.connect("clicked", self._on_virtual_key, command)
-            keys.pack_start(button, False, False, 0)
+        key_rows = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+        key_scroller.add(key_rows)
+        key_commands = self._virtual_keys()
+        for row_keys in (key_commands[:8], key_commands[8:]):
+            row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4)
+            key_rows.pack_start(row, False, False, 0)
+            for label, command in row_keys:
+                button = Gtk.Button(label=label)
+                button.set_can_focus(False)
+                button.connect("clicked", self._on_virtual_key, command)
+                row.pack_start(button, False, False, 0)
         root.pack_start(key_scroller, False, False, 0)
 
         self.status = Gtk.Label(label="Frontend ready; emulator bridge not yet connected")
@@ -275,7 +279,6 @@ class AS2KWindow(Gtk.ApplicationWindow):
     @staticmethod
     def _virtual_keys():
         return [
-            ("Esc", "KEY ESC"),
             *[(f"F{i}", f"KEY F{i}") for i in range(1, 9)],
             ("Print", "KEY PRINT"), ("Spell", "KEY SPELL"),
             ("Find", "KEY FIND"), ("Clear", "KEY CLEAR"),
