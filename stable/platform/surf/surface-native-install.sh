@@ -43,6 +43,10 @@ python3 -B "$RELEASE_ROOT/tests/test_nvram_orderly_shutdown.py" || {
     echo "BLOCKED: Stable NVRAM orderly-shutdown regression failed"
     exit 3
 }
+python3 -B "$RELEASE_ROOT/tests/test_nvram_file_selection.py" || {
+    echo "BLOCKED: Stable RAM file selection regression failed"
+    exit 3
+}
 mkdir -p "$STAGE/usr/local/libexec/as2k/frontend" \
          "$STAGE/usr/local/bin" "$STAGE/usr/local/share/applications"
 install -m 0755 "$BIN" "$STAGE/usr/local/libexec/as2k/as2k-bin"
