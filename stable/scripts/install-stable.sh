@@ -47,6 +47,10 @@ python3 -B "$REPO_DIR/tests/test_view_scale.py" || {
     echo "BLOCKED: Stable frontend LCD zoom regression failed" >&2
     exit 2
 }
+python3 -B "$REPO_DIR/tests/test_virtual_button_rows.py" || {
+    echo "BLOCKED: Stable virtual-button layout regression failed" >&2
+    exit 2
+}
 # Explicit traverse permissions even under umask 077 (Surf/postmarketOS).
 install -d -m 0755 "$PREFIX/libexec" "$LIBEXEC_DIR" "$FRONTEND_DIR" "$BIN_DIR" "$APP_DIR"
 install -m 0755 "$BINARY" "$LIBEXEC_DIR/as2k-bin"
