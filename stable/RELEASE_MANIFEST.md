@@ -125,3 +125,16 @@ adjuntos binarios públicos sin revisión legal/proveniencia.
 - **Pendiente:** cierre/reapertura de la aplicación GTK y validación interactiva del usuario; no registrar `GUI_PASS` hasta observarlo.
 - Se conservan los snapshots históricos previos de este manifiesto; sus SHA originales de Vontar no describen automáticamente este hotfix posterior.
 - Evidencia, respaldo y diagnóstico: [`stable/docs/VONTAR_VIEW_SCALE_FIX_20261022.md`](docs/VONTAR_VIEW_SCALE_FIX_20261022.md).
+
+## Mantenimiento Surf — hotfix escala GTK instalado (22-oct-2026)
+
+Esta intervención **es posterior** a la publicación del instalador descrita arriba; por tanto, las menciones históricas de “sin nueva instalación” se refieren al momento de publicación, no al estado del hotfix actual.
+
+- Equipo: Surf ARMv7, previa coincidencia exacta con los blobs originales `767759a0cb3907ce72e91cbbfe260435844db7d3` (UI) y `057356fe49798bc57518f5134bf58a52915a7628` (sesión).
+- Se instalaron solo los dos Python del frontend desde el commit fijo `7e7f240c925efdba9e805b2d33719ecaca4174be`.
+- Nuevos blobs verificados tras instalar: UI `1b8b889d1aeb582c7bae4d0632bda70f669b6c6a`; sesión `97803b2dc85c7ca9483ce971aa780d94f13ea6a9`.
+- `AS2K_STABLE_VIEW_100_150_200_HEADLESS_PASS`; `VERIFIED_SOURCE_AND_REGRESSION_PASS`; `SURF_SCALE_HOTFIX_INSTALLED_PASS`; salida remota 0.
+- No se recompiló ni modificó el núcleo ARMv7 (SHA-256 previamente medido `4577d29cdfff2f5916738d576a024bd4180a8343d6b478c6e9ebd1426b8fdedd`).
+- Respaldo de ambos Python anteriores conservado en el espacio privado del usuario. No se alteraron configuraciones, firmware, DictROM, NVRAM, ni se forzó cierre de GTK.
+- **GUI_INTERACTIVE=PENDING_REOPEN**: falta cerrar y reabrir AS2K en Surf y comprobar visualmente el cambio 100/150/200 y pantalla completa. No registrar GUI_PASS todavía.
+- Registro exacto del despliegue: [`stable/docs/SURF_VIEW_SCALE_FIX_20261022.md`](docs/SURF_VIEW_SCALE_FIX_20261022.md).
