@@ -93,3 +93,13 @@ compilados, firmware, DictROM, payloads propietarios, archivos
 NVRAM/RAM, capturas ni datos del usuario. Licencia raíz
 `LICENSE` y términos de terceros conservados; no crear
 adjuntos binarios públicos sin revisión legal/proveniencia.
+
+## Mantenimiento Vontar — hotfix escala GTK (22-oct-2026)
+
+- **Defecto corregido en el frontend Python Stable:** `Ver → 100 % / 150 % / 200 %` asignaba un zoom pero `_draw_lcd()` ignoraba su valor y escalaba según la asignación GTK; `ManagedWindow` imponía además 2× fuera del modelo de menú.
+- **Código de instalación verificado en Vontar:** `stable/frontend/as2k_ui.py` blob Git `1b8b889d1aeb582c7bae4d0632bda70f669b6c6a` y `stable/frontend/as2k_session.py` blob Git `97803b2dc85c7ca9483ce971aa780d94f13ea6a9`.
+- **Test ejecutado en Vontar:** `AS2K_STABLE_VIEW_100_150_200_HEADLESS_PASS`; validación sintáctica, prueba geométrica 100/150/200, manejo fullscreen y coincidencia de hashes tras instalación.
+- **Núcleo Stable no modificado:** SHA-256 `313cf536b65b8635d91f16d52d364c0dfd0e018795da63f36c1e73fe5330f5ee`, ya instalado tras reparación previa del despertar de PC.
+- **Pendiente:** cierre/reapertura de la aplicación GTK y validación interactiva del usuario; no registrar `GUI_PASS` hasta observarlo.
+- Se conservan los snapshots históricos previos de este manifiesto; sus SHA originales de Vontar no describen automáticamente este hotfix posterior.
+- Evidencia, respaldo y diagnóstico: [`stable/docs/VONTAR_VIEW_SCALE_FIX_20261022.md`](docs/VONTAR_VIEW_SCALE_FIX_20261022.md).
