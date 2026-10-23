@@ -40,7 +40,8 @@ fi
 MAME_REPO=https://github.com/SamDelorean/mame-as3k.git
 MAME_SHA=1dc2180181a3b1a21e8761ae40b50a9f55ac4a5b
 MAME_ROOT="$HOME/Projects/alphasmart/as2k-stable-vontar/mame-as3k"
-JOBS=${AS2K_JOBS:-1}
+# Vontar project directive: default to three parallel compilation jobs.
+JOBS=${AS2K_JOBS:-3}
 case "$JOBS" in ''|*[!0-9]*|0) fail "AS2K_JOBS debe ser entero positivo" ;; esac
 
 say "Dependencias ARM64"
