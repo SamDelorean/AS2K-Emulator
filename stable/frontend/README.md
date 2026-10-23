@@ -35,7 +35,7 @@ Implemented in the shell:
 
 - AS2K Emulator identity/header with PC, IR and printer state;
 - visible menu bar in normal and full-screen modes;
-- 100%, 150%, 200% and full-screen presentation modes;
+- 100%, 200%, 300% and full-screen presentation modes;
 - original 240x36 LCD aspect with the established two-color palette;
 - mouse-accessible special keys in two rows: upper F1-F8, lower Print, Spell, Find, Clear, Home, End,
   Enter and Send;
