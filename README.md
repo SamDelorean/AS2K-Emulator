@@ -1,7 +1,7 @@
 # AS2K Emulator — AlphaSmart 2000 Stable
 
 **Publicación de código fuente Stable: 2026-10-21; mantenimiento GTK: 2026-10-22.**
-La corrección de **Ver → 100 %, 150 %, 200 %** está en los
+La corrección de **Ver → 100 %, 200 %, 300 %** está en los
 archivos fuente y los instaladores canónicos de `main`. Todos
 ejecutan `stable/tests/test_view_scale.py` para evitar reinstalar el
 menú defectuoso. [Informe de Vontar](stable/docs/VONTAR_VIEW_SCALE_FIX_20261022.md).
@@ -37,7 +37,7 @@ persistente, bootstrap, display integrado y opciones de sesión).
 
 Menús originales: **Archivo** (Firmware/DictROM, bootstrap, capturas,
 grabación y salir); **Máquina** (reinicio, PC, impresora, infrarrojo,
-selección de inicio); **Ver** (100 %, 150 %, 200 %, pantalla completa,
+selección de inicio); **Ver** (100 %, 200 %, 300 %, pantalla completa,
 ventana integrada/SDL); **Configuración** (ROM, NVRAM, estados y salidas);
 **Ayuda** (atajos y acerca de). LCD de 240×36, teclado virtual,
 enlace PC/Send, salida PCL/CUPS-PDF y actividad IR.
