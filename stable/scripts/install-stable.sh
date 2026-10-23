@@ -42,11 +42,19 @@ do
     [ -f "$required" ] || { echo "Missing installation resource: $required" >&2; exit 2; }
 done
 
+# Preflight before modifying /usr/local: reject stale GTK zoom code.
+python3 -B "$REPO_DIR/tests/test_view_scale.py" || {
+    echo "BLOCKED: Stable frontend LCD zoom regression failed" >&2
+    exit 2
+}
 # Explicit traverse permissions even under umask 077 (Surf/postmarketOS).
 install -d -m 0755 "$PREFIX/libexec" "$LIBEXEC_DIR" "$FRONTEND_DIR" "$BIN_DIR" "$APP_DIR"
 install -m 0755 "$BINARY" "$LIBEXEC_DIR/as2k-bin"
 install -m 0755 "$REPO_DIR/frontend/as2k_ui.py" "$FRONTEND_DIR/as2k_ui.py"
 install -m 0755 "$REPO_DIR/frontend/as2k_session.py" "$FRONTEND_DIR/as2k_session.py"
+# Require exactly the tested files after copying.
+cmp -s "$REPO_DIR/frontend/as2k_ui.py" "$FRONTEND_DIR/as2k_ui.py"
+cmp -s "$REPO_DIR/frontend/as2k_session.py" "$FRONTEND_DIR/as2k_session.py"
 install -m 0755 "$REPO_DIR/frontend/as2k_pcl_to_pdf.py" "$FRONTEND_DIR/as2k_pcl_to_pdf.py"
 install -m 0644 "$REPO_DIR/frontend/alphasmart_2000_shortcuts.txt" "$FRONTEND_DIR/alphasmart_2000_shortcuts.txt"
 install -m 0755 "$REPO_DIR/packaging/as2k-launcher.sh" "$BIN_DIR/as2k"
