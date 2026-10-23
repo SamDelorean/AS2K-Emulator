@@ -6,7 +6,6 @@ import importlib.util
 import json
 import os
 import time
-import hashlib
 from pathlib import Path
 import subprocess
 import sys
@@ -32,31 +31,6 @@ RUNTIME = (Path(os.environ["XDG_RUNTIME_DIR"]) / "as2k") if os.environ.get("XDG_
 SETTINGS = CONFIG / "session.json"
 CFG = CONFIG / "cfg" / "asma2k.cfg"
 VALID_SIZES = {"firmware": (0x8000, 0x81e5), "dictrom": (0x20000,)}
-RAM_SIZE = 0x20000
-RAM_DEFAULT = DATA / "nvram" / "asma2k" / "nvram"
-
-def valid_ram(path):
-    try:
-        return Path(path).is_file() and Path(path).stat().st_size == RAM_SIZE
-    except (OSError, ValueError, TypeError):
-        return False
-
-def copy_ram_atomic(path, data):
-    if len(data) != RAM_SIZE:
-        raise ValueError("La imagen RAM debe medir 131072 bytes.")
-    path.parent.mkdir(parents=True, exist_ok=True)
-    fd, name = tempfile.mkstemp(prefix=".as2k-ram-", dir=str(path.parent))
-    try:
-        with os.fdopen(fd, "wb") as out:
-            out.write(data)
-            out.flush()
-            os.fsync(out.fileno())
-        os.chmod(name, 0o600)
-        os.replace(name, path)
-    finally:
-        if os.path.exists(name):
-            os.unlink(name)
-
 
 def atomic_write(path, content):
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -81,7 +55,7 @@ def valid_image(path, role):
 
 class Session:
     def __init__(self):
-        self.settings = {"firmware": "", "dictrom": "", "boot_mode": "normal", "bootstrap_rom": "", "bootstrap_enabled": "0", "display_mode": "integrated", "payload_name": "STOCK", "payload_file": "", "ram_file": ""}
+        self.settings = {"firmware": "", "dictrom": "", "boot_mode": "normal", "bootstrap_rom": "", "bootstrap_enabled": "0", "display_mode": "integrated", "payload_name": "STOCK", "payload_file": ""}
         try:
             existing = json.loads(SETTINGS.read_text(encoding="utf-8"))
             if isinstance(existing, dict):
@@ -101,9 +75,6 @@ class Session:
             self.settings["boot_mode"] = "normal"
         self.core = None
         self.log = None
-        self.running_ram = None
-        self.running_external = None
-        self.external_hash = None
         for folder in (CONFIG / "cfg", DATA / "nvram", DATA / "output", STATE / "states", RUNTIME):
             folder.mkdir(parents=True, exist_ok=True)
         os.chmod(RUNTIME, 0o700)
@@ -153,77 +124,16 @@ class Session:
                 backup.write_bytes(CFG.read_bytes())
         atomic_write(CFG, ET.tostring(root, encoding="unicode", xml_declaration=True) + "\n")
 
-    def select_ram(self, path=None):
-        chosen = str(Path(path).expanduser().resolve()) if path else ""
-        if chosen and not valid_ram(chosen):
-            raise ValueError("Selecciona un archivo RAM de 131072 bytes.")
-        self.settings["ram_file"] = "" if chosen == str(RAM_DEFAULT) else chosen
-        self.save()
-
-    def prepare_ram(self):
-        chosen = self.settings["ram_file"]
-        self.running_external = None
-        self.external_hash = None
-        if chosen:
-            external = Path(chosen).expanduser().resolve()
-            if not valid_ram(external):
-                raise ValueError("RAM seleccionada ausente o inválida: " + str(external))
-            profile = hashlib.sha256(str(external).encode()).hexdigest()[:24]
-            directory = DATA / "ram-workspaces" / profile
-            working = directory / "asma2k" / "nvram"
-            data = external.read_bytes()
-            copy_ram_atomic(working, data)
-            self.running_external = external
-            self.external_hash = hashlib.sha256(data).digest()
-        else:
-            directory = DATA / "nvram"
-            working = RAM_DEFAULT
-            working.parent.mkdir(parents=True, exist_ok=True)
-            if not working.exists():
-                # MAME default is all zeroes; never overwrite an existing RAM.
-                with working.open("xb") as output:
-                    output.write(bytes(RAM_SIZE))
-                    output.flush()
-                    os.fsync(output.fileno())
-                os.chmod(working, 0o600)
-        if not valid_ram(working):
-            raise ValueError("Archivo RAM de trabajo inválido: " + str(working))
-        self.running_ram = working
-        return directory
-
     def stop(self):
         if self.core is not None:
             if self.core.poll() is None:
-                # Graceful exit invokes native MAME nvram_save().
-                with (RUNTIME / "control.queue").open("a", encoding="utf-8") as output:
-                    output.write("MACHINE EXIT\n")
-                    output.flush()
-                    os.fsync(output.fileno())
+                self.core.terminate()
                 try:
-                    code = self.core.wait(timeout=12)
-                except subprocess.TimeoutExpired as exc:
-                    raise RuntimeError("MAME no confirmó el guardado; el núcleo sigue ejecutándose.") from exc
-            else:
-                code = self.core.returncode
+                    self.core.wait(timeout=4)
+                except subprocess.TimeoutExpired:
+                    self.core.kill()
+                    self.core.wait(timeout=3)
             self.core = None
-            if self.log:
-                self.log.close()
-                self.log = None
-            if code != 0 or (self.running_ram is not None and not valid_ram(self.running_ram)):
-                raise RuntimeError("MAME terminó sin RAM validada; se conserva el archivo seleccionado.")
-            if self.running_external is not None:
-                target = self.running_external
-                if not valid_ram(target) or hashlib.sha256(target.read_bytes()).digest() != self.external_hash:
-                    raise RuntimeError("La RAM externa cambió; se conserva sin sobrescribir.")
-                old = target.read_bytes()
-                new = self.running_ram.read_bytes()
-                if old != new:
-                    backup = DATA / "ram-backups" / (hashlib.sha256(str(target).encode()).hexdigest() + ".before")
-                    copy_ram_atomic(backup, old)
-                    copy_ram_atomic(target, new)
-            self.running_ram = None
-            self.running_external = None
-            self.external_hash = None
         if self.log:
             self.log.close()
             self.log = None
@@ -235,7 +145,6 @@ class Session:
         # apply bootstrap selection to avoid overwriting the new mode.
         self.stop()
         self.update_boot_cfg()
-        nvram_dir = self.prepare_ram()
         for name in ("control.queue", "events.queue"):
             (RUNTIME / name).write_text("", encoding="utf-8")
         (RUNTIME / "lcd.bin").unlink(missing_ok=True)
@@ -249,9 +158,9 @@ class Session:
         self.log = (STATE / "core.log").open("w", encoding="utf-8")
         cmd = [str(CORE), "asma2k",
                "-rom1", str(fw), "-rom2", self.settings["dictrom"], "-rompath", str(fw.parent),
-               "-cfg_directory", str(CONFIG / "cfg"), "-nvram_directory", str(nvram_dir),
+               "-cfg_directory", str(CONFIG / "cfg"), "-nvram_directory", str(DATA / "nvram"),
                "-snapshot_directory", str(DATA / "output"), "-state_directory", str(STATE / "states"),
-               "-sound", "none", "-nvram_save"]
+               "-sound", "none"]
         display = os.environ.get("AS2K_DISPLAY_MODE", self.settings["display_mode"])
         # Keep the SDL driver choice local to MAME, not the GTK process.
         # On Armbian, -video none alone still leaves an X11 window behind.
@@ -377,9 +286,6 @@ class ManagedWindow(ui.AS2KWindow):
         if file_root:
             menu = file_root.get_submenu()
             self._menu_item(menu, "Abrir ROM bootstrap…", self._choose_bootstrap_rom)
-            menu.append(Gtk.SeparatorMenuItem())
-            self._menu_item(menu, "Abrir RAM/NVRAM…", self._choose_ram)
-            self._menu_item(menu, "Usar RAM predeterminada", self._use_default_ram)
             self.bootstrap_toggle = self._check_item(
                 menu, "Usar ROM bootstrap al arrancar", self._toggle_bootstrap_rom)
             self.bootstrap_toggle.set_active(session.settings["bootstrap_enabled"] == "1")
@@ -459,11 +365,8 @@ class ManagedWindow(ui.AS2KWindow):
 
     def _check_core(self):
         if session.core is not None and session.core.poll() is not None:
-            try:
-                session.stop()
-                self.status.set_text("El núcleo terminó; RAM verificada.")
-            except (OSError, RuntimeError, ValueError) as exc:
-                self.status.set_text("Núcleo terminado; RAM sin confirmar: " + str(exc))
+            self.status.set_text("El núcleo terminó; revisar ~/.local/state/as2k/core.log")
+            session.stop()
         return True
 
     def _change_boot(self, item, value):
@@ -552,41 +455,6 @@ class ManagedWindow(ui.AS2KWindow):
         except (OSError, ValueError) as exc:
             error_dialog(self, exc)
 
-    def _choose_ram(self, *_args):
-        path = self._choose_file("Seleccionar RAM/NVRAM AlphaSmart 2000 (128 KiB)")
-        if path is not None:
-            self._activate_ram(path)
-
-    def _use_default_ram(self, *_args):
-        self._activate_ram(None)
-
-    def _activate_ram(self, path):
-        # An active session must finish writing the previous image FIRST.
-        # Never switch the selected file before MAME exits cleanly.
-        try:
-            if path is not None and not valid_ram(path):
-                raise ValueError("La RAM seleccionada debe medir exactamente 131072 bytes.")
-            session.stop()
-            session.select_ram(path)
-            if session.ready():
-                session.start(self)
-                self._frame_cache = None
-                self.frame_mtime_ns = -1
-            active = session.settings["ram_file"] or str(RAM_DEFAULT)
-            self.status.set_text("Archivo RAM activo: " + active)
-        except (OSError, ValueError, RuntimeError) as exc:
-            error_dialog(self, exc)
-
-    def _on_delete_event(self, *args):
-        if super()._on_delete_event(*args):
-            return True
-        try:
-            session.stop()
-        except (OSError, RuntimeError, ValueError) as exc:
-            error_dialog(self, "No se cerró AS2K porque la RAM no se guardó: " + str(exc))
-            return True
-        return False
-
     def _folder(self, name):
         try:
             session.open_folder(name)
@@ -652,10 +520,7 @@ def main():
         if not session.ready():
             configure_dialog()
         if session.ready():
-            try:
-                session.start()
-            except (OSError, RuntimeError, ValueError) as exc:
-                error_dialog(None, exc)
+            session.start()
         return ManagedApplication().run(sys.argv[:1])
     finally:
         session.stop()
