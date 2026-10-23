@@ -14,7 +14,7 @@ The application is vertically organized as:
 2. always-visible menu bar;
 3. AlphaSmart 2000 LCD at its original aspect ratio;
 4. IR activity line;
-5. mouse-accessible special-key row.
+5. mouse-accessible special keys in two horizontal rows.
 
 The header begins with `AS2K Emulator` and shows the current external-state summary:
 `PC: ON/OFF`, `IR: OFF/ON/TX` and `PRN: ON/OFF`. Recording may add a compact `REC` indicator.
@@ -32,7 +32,7 @@ The user-selectable presentation modes are exactly:
 - 200%;
 - full screen.
 
-Full screen never hides the AS2K header, menu bar, IR line or special-key row. It only gives the
+Full screen never hides the AS2K header, menu bar, IR line or the two special-key rows. It only gives the
 application the available display area. The LCD is never stretched out of aspect.
 
 ## Menus
@@ -66,9 +66,12 @@ Only 100%, 150%, 200% and full screen are offered.
 
 ## Virtual special keys
 
-The mouse row contains:
+The mouse controls are arranged in **two horizontal rows**, preserving button order within each group:
 
-`Esc | F1 F2 F3 F4 F5 F6 F7 F8 | Print | Spell | Find | Clear | Home | End | Enter | Send`
+- Upper: `F1 F2 F3 F4 F5 F6 F7 F8`
+- Lower: `Print Spell Find Clear Home End Enter Send`
+
+There is **no virtual Esc button**. The physical host keyboard Escape mapping is retained.
 
 Ordinary QWERTY keys remain physical-keyboard input. Every virtual special key must create the
 same matrix transition as the corresponding AlphaSmart key.
