@@ -343,7 +343,10 @@ class ManagedWindow(ui.AS2KWindow):
             frame.set_no_show_all(True)
             frame.hide()
         else:
-            self.lcd_area.set_size_request(ui.LCD_WIDTH * 2, ui.LCD_HEIGHT * 2)
+            # Preserve the Vontar's familiar initial 200% LCD viewport, but
+            # select the corresponding GTK radio item so the view menu and
+            # actual render scale cannot disagree.
+            self._scale_menu_items[2.0].set_active(True)
             self.set_default_size(760, 420)
         selected = session.settings["payload_name"]
         if selected == "EXT" and Path(session.settings["payload_file"]).is_file():
