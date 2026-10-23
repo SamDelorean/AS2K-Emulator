@@ -1882,15 +1882,6 @@ void asma2k_state::ui_process_command(std::string const &line)
 		return;
 	}
 
-	// Ordered exit: running_machine::run() will save all NVRAM devices
-	// before terminating. Never replace this with host SIGTERM/SIGKILL.
-	if (line == "MACHINE EXIT")
-	{
-		ui_emit_event("STATUS\tSalida ordenada solicitada");
-		machine().schedule_exit();
-		return;
-	}
-
 	if (line.rfind("FIRMWARE ", 0) == 0)
 	{
 		stage_image_file(line.substr(9), true);
