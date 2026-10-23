@@ -103,3 +103,9 @@ The virtual Esc button was removed, but physical keyboard Escape remains mapped.
 Both rows use the existing horizontal scroller on narrow screens. Commands,
 GTK LCD scaling, emulation core and session state are untouched.
 Headless static regression: `stable/tests/test_virtual_button_rows.py`.
+
+**Centered uniform layout (22 Oct):** both lines have GTK centered alignment,
+every button uses the same shared horizontal SizeGroup and a minimum request
+of 72×34 GTK logical pixels; longer system fonts can expand all buttons
+together without truncating the lower labels. Installed on both VONTAR and
+Surf with test/installation PASS, pending GUI reopen to visually confirm.
