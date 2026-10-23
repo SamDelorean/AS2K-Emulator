@@ -88,6 +88,9 @@ class AS2KWindow(Gtk.ApplicationWindow):
         )
         self._clear_lcd()
 
+        # A chosen LCD zoom is independent of the window's extra space.
+        # Fullscreen alone fits the display area dynamically.
+        self._lcd_fullscreen = False
         self._build_ui()
         self._update_header()
         self._update_ir_line("IR: OFF")
@@ -239,10 +242,12 @@ class AS2KWindow(Gtk.ApplicationWindow):
         view_root.set_submenu(view_menu)
         bar.append(view_root)
         scale_group = None
+        self._scale_menu_items = {}
         for label, scale in (("100 %", 1.0), ("150 %", 1.5), ("200 %", 2.0)):
             item = Gtk.RadioMenuItem.new_with_label(scale_group, label)
             scale_group = item.get_group()
             item.connect("toggled", self._on_scale_selected, scale)
+            self._scale_menu_items[scale] = item
             if scale == 1.0:
                 item.set_active(True)
             view_menu.append(item)
@@ -298,8 +303,12 @@ class AS2KWindow(Gtk.ApplicationWindow):
 
     def _draw_lcd(self, widget: Gtk.DrawingArea, cr) -> bool:
         alloc = widget.get_allocation()
-        scale = min(alloc.width / LCD_WIDTH, alloc.height / LCD_HEIGHT)
-        scale = max(scale, 1.0)
+        # Window/GTK layout expands Gtk.DrawingArea independently of the
+        # set_size_request minimum. Never derive normal zoom from allocation:
+        # that made all three radio-menu percentages render identically.
+        available = min(alloc.width / LCD_WIDTH, alloc.height / LCD_HEIGHT)
+        target = available if self._lcd_fullscreen else self.ui_scale
+        scale = max(0.01, min(target, available))
         width = LCD_WIDTH * scale
         height = LCD_HEIGHT * scale
         x = (alloc.width - width) / 2.0
@@ -315,19 +324,26 @@ class AS2KWindow(Gtk.ApplicationWindow):
         return False
 
     def _set_scale(self, scale: float) -> None:
+        if scale not in (1.0, 1.5, 2.0):
+            raise ValueError("Escala LCD no admitida")
         self.ui_scale = scale
         self.lcd_area.set_size_request(int(LCD_WIDTH * scale), int(LCD_HEIGHT * scale))
+        self.lcd_area.queue_draw()
         self.queue_resize()
 
     def _on_scale_selected(self, item: Gtk.RadioMenuItem, scale: float) -> None:
-        if item.get_active():
+        # Gtk.RadioMenuItem may emit toggled while the menu is constructed,
+        # before the DrawingArea is attached to the window.
+        if item.get_active() and hasattr(self, "lcd_area"):
             self._set_scale(scale)
 
     def _toggle_fullscreen(self, item: Gtk.CheckMenuItem) -> None:
-        if item.get_active():
+        self._lcd_fullscreen = item.get_active()
+        if self._lcd_fullscreen:
             self.fullscreen()
         else:
             self.unfullscreen()
+        self.lcd_area.queue_draw()
 
     def _update_header(self) -> None:
         prefix = "AS2K Emulator"
