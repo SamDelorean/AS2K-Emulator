@@ -1,5 +1,10 @@
 #!/bin/sh
 set -eu
+# HISTORICAL ONLY: previous revisions fetched an older frontend, undoing the
+# View 100/150/200 fix. Retain the code below for provenance, but block use.
+printf '%s\n' 'BLOCKED: historical installer would restore obsolete AS2K GTK code.' 'Use the canonical current-release installer:' 'stable/platform/surf/surface-native-install.sh (from current Stable checkout)' >&2
+exit 2
+
 
 # AS2K Emulator — unattended Surface RT/postmarketOS installer.
 # Stable source revisions are frozen to the version already built/installed on T640.
