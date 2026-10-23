@@ -47,9 +47,9 @@ def main():
     # natural button width across all 16 labels, with a 72x34 minimum.
     assert "key_rows.set_halign(Gtk.Align.CENTER)" in fragment
     assert "row.set_halign(Gtk.Align.CENTER)" in fragment
-    assert "key_sizes = Gtk.SizeGroup.new(Gtk.SizeGroupMode.HORIZONTAL)" in fragment
+    assert "self._virtual_key_size_group = Gtk.SizeGroup.new(Gtk.SizeGroupMode.HORIZONTAL)" in fragment
     assert "button.set_size_request(72, 34)" in fragment
-    assert "key_sizes.add_widget(button)" in fragment
+    assert "self._virtual_key_size_group.add_widget(button)" in fragment
     print("AS2K_STABLE_BUTTON_TWO_ROWS_NO_ESC_STATIC_PASS")
     print("AS2K_STABLE_BUTTON_CENTERED_UNIFORM_STATIC_PASS")
 
