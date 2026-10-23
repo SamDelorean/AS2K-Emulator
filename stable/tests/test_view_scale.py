@@ -78,6 +78,7 @@ def test():
     set_scale = method("_set_scale")
     toggle_fullscreen = method("_toggle_fullscreen")
     win = Window()
+    win._set_scale = lambda factor: set_scale(win, factor)
     for factor, expected_size in (
         (1.0, (240, 36)), (1.5, (360, 54)), (2.0, (480, 72))
     ):
