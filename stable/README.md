@@ -61,7 +61,7 @@ integrada de un panel o dos ventanas SDL.
 RAM/NVRAM, estados, impresión y salidas Send.
 
 **Ayuda:** atajos de teclado y Acerca de. Fila especial:
-Esc, F1–F8, Print, Spell, Find, Clear, Home, End, Enter y Send.
+F1–F8 en la fila superior y Print, Spell, Find, Clear, Home, End, Enter y Send en la inferior. No se muestra botón Esc, pero Escape continúa disponible desde el teclado físico.
 
 Workbench/payload heredado se conserva en el gestor congelado.
 Ninguna de esas opciones es una afirmación de nueva prueba de
