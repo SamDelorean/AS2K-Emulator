@@ -37,7 +37,7 @@ Implemented in the shell:
 - visible menu bar in normal and full-screen modes;
 - 100%, 150%, 200% and full-screen presentation modes;
 - original 240x36 LCD aspect with the established two-color palette;
-- mouse-accessible special-key row: Esc, F1-F8, Print, Spell, Find, Clear, Home, End,
+- mouse-accessible special keys in two rows: upper F1-F8, lower Print, Spell, Find, Clear, Home, End,
   Enter and Send;
 - workbench-only payload menu enabled with `AS2K_WORKBENCH=1`;
 - PNG LCD screenshots with Save As;
@@ -63,7 +63,7 @@ When the variables are not set, paths default under `$XDG_RUNTIME_DIR/as2k/` (or
 
 The current command vocabulary is intentionally human-readable and provisional:
 
-- `KEY ESC`, `KEY F1` ... `KEY F8`, `KEY PRINT`, `KEY SPELL`, `KEY FIND`,
+- `KEY F1` ... `KEY F8`, `KEY PRINT`, `KEY SPELL`, `KEY FIND`,
   `KEY CLEAR`, `KEY HOME`, `KEY END`, `KEY ENTER`, `KEY SEND`;
 - `KEYDOWN <matrix-key>` / `KEYUP <matrix-key>` for ordinary physical host-key make/break events;
 - `MACHINE RESET`;
@@ -94,3 +94,12 @@ kept in a separately labelled section rather than silently merged.
 ```
 
 This checks Python syntax and the fixed LCD/media constants without requiring a display server.
+
+## GTK button layout refinement (22 October 2026)
+
+Only the visible virtual-button area was changed: F1-F8 are on the top row,
+and Print, Spell, Find, Clear, Home, End, Enter, Send are on the lower row.
+The virtual Esc button was removed, but physical keyboard Escape remains mapped.
+Both rows use the existing horizontal scroller on narrow screens. Commands,
+GTK LCD scaling, emulation core and session state are untouched.
+Headless static regression: `stable/tests/test_virtual_button_rows.py`.
