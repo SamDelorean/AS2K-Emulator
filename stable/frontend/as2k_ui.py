@@ -186,13 +186,20 @@ class AS2KWindow(Gtk.ApplicationWindow):
         key_scroller.set_margin_end(8)
         key_scroller.set_margin_bottom(8)
         key_rows = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+        key_rows.set_halign(Gtk.Align.CENTER)
         key_scroller.add(key_rows)
+        # One common natural/minimum size for all 16 keys; five-letter labels
+        # in the lower row determine the minimum readable width.
+        key_sizes = Gtk.SizeGroup.new(Gtk.SizeGroupMode.HORIZONTAL)
         key_commands = self._virtual_keys()
         for row_keys in (key_commands[:8], key_commands[8:]):
             row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4)
+            row.set_halign(Gtk.Align.CENTER)
             key_rows.pack_start(row, False, False, 0)
             for label, command in row_keys:
                 button = Gtk.Button(label=label)
+                button.set_size_request(72, 34)
+                key_sizes.add_widget(button)
                 button.set_can_focus(False)
                 button.connect("clicked", self._on_virtual_key, command)
                 row.pack_start(button, False, False, 0)
