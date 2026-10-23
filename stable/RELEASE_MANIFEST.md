@@ -150,3 +150,13 @@ Esta intervención **es posterior** a la publicación del instalador descrita ar
 - **VONTAR instalado — PASS**: mismas pruebas, hash del archivo final correcto; backup privado `/home/spc/.local/share/alphasmart/audits/as2k/two-button-rows-20261022.hu9LzOPj`.
 - Ambos procesos terminaron con código 0, sin recompilar ni modificar MAME ni `as2k_session.py` y sin interrumpir la sesión GTK actual.
 - **GUI_INTERACTIVE=PENDING_REOPEN** en ambos: la nueva disposición se verá al cerrar y volver a abrir AS2K. Las pruebas estáticas no constituyen aprobación gráfica humana.
+
+## Afinación GTK — filas centradas y botones uniformes (22-oct-2026)
+
+- Ajuste sobre la versión previamente instalada de dos filas. Cada fila se centra horizontalmente como línea de texto independiente; ambos conjuntos tienen ocho botones en el mismo orden aprobado, sin Esc virtual.
+- Los 16 botones comparten un Gtk.SizeGroup horizontal persistente, con tamaño mínimo común 72×34 píxeles lógicos GTK. La anchura natural aumenta para todos cuando el texto/tema lo requiera; sin recortes deliberados de Print/Spell/Clear/Enter.
+- Fuente canónica `stable/frontend/as2k_ui.py`: blob `67ac14346e0e6f1cee1233ae74de5cc3c31df3d1`; prueba `stable/tests/test_virtual_button_rows.py`: blob `90c11be2bed25c2f3ed3c0ef6370b24c076ae65c`; snapshot del parche `747e10ba76844dfc8f95fc5e9bb920f0ce09c83a`.
+- **Surf**: `AS2K_STABLE_BUTTON_TWO_ROWS_NO_ESC_STATIC_PASS`, `AS2K_STABLE_BUTTON_CENTERED_UNIFORM_STATIC_PASS`, `AS2K_STABLE_VIEW_100_150_200_HEADLESS_PASS`, sintaxis PASS; instalación y blob final PASS; salida 0. Respaldo `/home/user/.local/share/alphasmart/audits/as2k/centered-keyrows-20261022.XXcBMkLI`.
+- **VONTAR**: idénticas pruebas e instalación PASS; salida 0. Respaldo `/home/spc/.local/share/alphasmart/audits/as2k/centered-keyrows-20261022.j5ipN2iB`.
+- Núcleo MAME y gestor de sesión comprobados sin cambios en ambos equipos; sin nueva compilación ni cierre GTK forzado. Dos llamadas Commander por equipo: arranque y comprobación final.
+- **GUI_INTERACTIVE=PENDING_REOPEN** en Surf y VONTAR: requieren reapertura manual para confirmar el centrado y la legibilidad con el tema GTK real. No adjudicar GUI_PASS hasta observación.
