@@ -138,3 +138,15 @@ Esta intervención **es posterior** a la publicación del instalador descrita ar
 - Respaldo de ambos Python anteriores conservado en el espacio privado del usuario. No se alteraron configuraciones, firmware, DictROM, NVRAM, ni se forzó cierre de GTK.
 - **GUI_INTERACTIVE=PENDING_REOPEN**: falta cerrar y reabrir AS2K en Surf y comprobar visualmente el cambio 100/150/200 y pantalla completa. No registrar GUI_PASS todavía.
 - Registro exacto del despliegue: [`stable/docs/SURF_VIEW_SCALE_FIX_20261022.md`](docs/SURF_VIEW_SCALE_FIX_20261022.md).
+
+## Afinación GTK — botones en dos filas (22-oct-2026)
+
+- Decisión: retirar **solo el botón virtual Esc**; conservar Escape físico.
+- Fila superior: F1, F2, F3, F4, F5, F6, F7, F8.
+- Fila inferior: Print, Spell, Find, Clear, Home, End, Enter, Send, sin reordenar.
+- La corrección reutiliza los comandos de matriz existentes, mantiene desplazamiento horizontal GTK y no altera núcleo, gestor de sesión, archivos privados ni escala LCD.
+- Fuente común `stable/frontend/as2k_ui.py`: blob Git `d1ca7cd1d893d01f206872b4a909f6e24a50bb76`; prueba nueva `stable/tests/test_virtual_button_rows.py`.
+- **Surf instalado — PASS**: prueba estática `AS2K_STABLE_BUTTON_TWO_ROWS_NO_ESC_STATIC_PASS`, prueba escala `AS2K_STABLE_VIEW_100_150_200_HEADLESS_PASS`, sintaxis PASS, hash del archivo final correcto; backup privado `/home/user/.local/share/alphasmart/audits/as2k/two-button-rows-20261022.XXAPOmOA`.
+- **VONTAR instalado — PASS**: mismas pruebas, hash del archivo final correcto; backup privado `/home/spc/.local/share/alphasmart/audits/as2k/two-button-rows-20261022.hu9LzOPj`.
+- Ambos procesos terminaron con código 0, sin recompilar ni modificar MAME ni `as2k_session.py` y sin interrumpir la sesión GTK actual.
+- **GUI_INTERACTIVE=PENDING_REOPEN** en ambos: la nueva disposición se verá al cerrar y volver a abrir AS2K. Las pruebas estáticas no constituyen aprobación gráfica humana.
