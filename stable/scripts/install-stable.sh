@@ -55,6 +55,10 @@ python3 -B "$REPO_DIR/tests/test_nvram_orderly_shutdown.py" || {
     echo "BLOCKED: Stable GTK NVRAM persistence regression failed" >&2
     exit 2
 }
+python3 -B "$REPO_DIR/tests/test_nvram_file_selection.py" || {
+    echo "BLOCKED: Stable RAM file selection regression failed" >&2
+    exit 2
+}
 # Explicit traverse permissions even under umask 077 (Surf/postmarketOS).
 install -d -m 0755 "$PREFIX/libexec" "$LIBEXEC_DIR" "$FRONTEND_DIR" "$BIN_DIR" "$APP_DIR"
 install -m 0755 "$BINARY" "$LIBEXEC_DIR/as2k-bin"
