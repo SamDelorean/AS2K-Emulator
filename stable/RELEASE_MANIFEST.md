@@ -94,6 +94,27 @@ NVRAM/RAM, capturas ni datos del usuario. Licencia raíz
 `LICENSE` y términos de terceros conservados; no crear
 adjuntos binarios públicos sin revisión legal/proveniencia.
 
+## Protección de instalaciones posteriores — escala GTK (22-oct-2026)
+
+- Rama `main`: interfaz corregida, gestor de sesión corregido y
+  `stable/tests/test_view_scale.py` unidos al código fuente de Stable.
+- `stable/scripts/validate-stable-static.sh`: ejecuta el test de
+  100/150/200 (también en `--check` Vontar).
+- `stable/scripts/install-stable.sh`: bloquea instalaciones si falla la
+  regresión y compara los dos Python instalados con los originales
+  probados. Se comprueba **antes** de modificar archivos del sistema.
+- `stable/platform/surf/surface-native-install.sh`: usa esos mismos
+  archivos del checkout Stable actual, ejecuta el test antes de la
+  instalación y verifica identidad del frontend instalado.
+- `stable/install-as2k-vontar.sh`: `AS2K_JOBS=3` predeterminado,
+  sin modificar la pauta nativa `-j1` de Surf.
+- Los tres instaladores heredados que podían descargar un commit
+  antiguo están bloqueados en `main`; sus fuentes se preservan en
+  Git, pero no deben utilizarse para nuevas instalaciones.
+- No hubo nueva instalación en Surf ni T; las garantías son del
+  código de instalación publicado. La prueba GTK interactiva
+  de las tres escalas corresponde a la sesión nueva del usuario.
+
 ## Mantenimiento Vontar — hotfix escala GTK (22-oct-2026)
 
 - **Defecto corregido en el frontend Python Stable:** `Ver → 100 % / 150 % / 200 %` asignaba un zoom pero `_draw_lcd()` ignoraba su valor y escalaba según la asignación GTK; `ManagedWindow` imponía además 2× fuera del modelo de menú.
