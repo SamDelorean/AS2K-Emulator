@@ -61,6 +61,8 @@ sh "$ROOT/scripts/validate-ui-static.sh"
 python3 -B "$ROOT/tests/test_view_scale.py"
 # Preserve the user-approved centered 2x8 key layout and physical Escape.
 python3 -B "$ROOT/tests/test_virtual_button_rows.py"
+# Native NVRAM must survive a clean GTK-requested MAME exit.
+python3 -B "$ROOT/tests/test_nvram_orderly_shutdown.py"
 
 grep -F '@PREFIX@/bin/as2k' "$ROOT/packaging/as2k.desktop.in" >/dev/null \
     || fail "desktop template does not target installed stable launcher"
