@@ -178,3 +178,19 @@ Esta revisión es **posterior** a los informes históricos del primer hotfix 100
 - En ambos equipos se comprobó por hash que el binario MAME no cambió; `as2k_session.py` permaneció sin modificar. Sin compilación, ROM, DictROM, NVRAM o cierre forzado de aplicaciones.
 - **GUI_INTERACTIVE=PENDING_REOPEN** en ambos equipos. Cerrar y volver a abrir AS2K antes de evaluar visualmente el nuevo menú. Las pruebas headless y la coincidencia de hashes **no** implican aceptación visual.
 - Uso Commander: dos llamadas por equipo para lanzar y verificar; ninguna otra operación remota.
+
+## RAM-01 — persistencia NVRAM nativa y salida ordenada (22-oct-2026)
+
+**Este incremento actualiza el estado de la regresión documentada anteriormente.** Se recuperó la persistencia sin modificar ni recompilar el núcleo MAME. El comportamiento de RAM del AS2K-DIAG fue tomado como referencia; no se introdujo DynFS ni un formato de archivo paralelo.
+
+- La ruta nativa continúa siendo `~/.local/share/as2k/nvram/asma2k/nvram`, longitud exacta `0x20000` (131 072 B, cuatro bancos de 32 KiB). MAME carga NVRAM en el inicio y la crea/guarda al salir normalmente.
+- Se reparó solamente `stable/frontend/as2k_session.py`: blob Git `5f5efb5ac3752f0c0aa4679f76fe0cfee858aa90`; el método `Session.stop()` ya no utiliza `terminate()` ni `kill()`. Utiliza un script Lua muy pequeño creado en el runtime privado para solicitar `manager.machine:exit()` y espera el fin del proceso.
+- Si no se confirma la salida o el archivo final es inválido, el frontend **no declara guardado correcto** ni fuerza a matar el proceso. El cierre de ventana GTK intercepta el error y permanece abierto.
+- Nuevo test `stable/tests/test_nvram_orderly_shutdown.py`: AST y ejecución simulada de `Session.stop()`, confirmando ruta de éxito, timeout, retorno no cero y ausencia de archivo. Se incorporó a `validate-stable-static.sh`, `install-stable.sh` y `surface-native-install.sh`.
+- **VONTAR (AArch64):** `AS2K_STABLE_NVRAM_NATIVE_SHUTDOWN_STATIC_PASS`, `AS2K_STABLE_NVRAM_SESSION_STOP_MOCK_PASS`, `ISOLATED_MAME_NATIVE_NVRAM_CYCLE_1_PASS`, `ISOLATED_MAME_NATIVE_NVRAM_CYCLE_2_PASS`, `NVRAM_NATIVE_CREATE_AND_REOPEN_PASS` y `VONTAR_NATIVE_NVRAM_ORDERLY_FIX_INSTALLED_PASS`. Exit code 0. Respaldo `/home/spc/.local/share/alphasmart/audits/as2k/orderly-ram-20261022.MgcaTCvV`.
+- **Surf (ARMv7/musl):** las pruebas estática y simulada PASS, `SURF_ISOLATED_NATIVE_NVRAM_CYCLE_1_PASS`, `SURF_ISOLATED_NATIVE_NVRAM_CYCLE_2_PASS`, `SURF_NATIVE_NVRAM_CREATE_AND_REOPEN_PASS` y `SURF_NATIVE_NVRAM_ORDERLY_FIX_INSTALLED_PASS`. Exit code 0. Respaldo `/home/user/.local/share/alphasmart/audits/as2k/orderly-ram-20261022.XXIKbeLp`.
+- Ambos ciclos nativos ejecutaron el binario ya instalado con ROM/DictROM autorizadas en **carpeta de prueba temporal separada**; en la primera ejecución la NVRAM de 131 072 B no existía y MAME la generó al salir, y en la segunda fue reutilizada. No se abrió, copió, sobrescribió ni modificó la NVRAM personal del usuario durante las pruebas.
+- Núcleo C++ intacto, blob `d6409067d2c64719e41ac5871952b85f9297b4e0`; verificadas las identidades de los binarios instalados antes/después. **Sin recompilación.**
+- Commander por equipo: tres llamadas en VONTAR (lanzar y dos comprobaciones), tres en Surf. No se interrumpieron las GUI.
+- **Pendiente:** cerrar y reabrir voluntariamente la ventana GTK y observar persistencia de un documento real de un arranque al siguiente. No declarar PASS visual o de datos personales sin esta comprobación.
+- **Fuera de RAM-01:** menú para escoger un archivo RAM específico, previsto como incremento separado reutilizando el directorio NVRAM nativo.
