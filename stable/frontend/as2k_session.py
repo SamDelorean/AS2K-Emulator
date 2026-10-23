@@ -377,6 +377,9 @@ class ManagedWindow(ui.AS2KWindow):
         if file_root:
             menu = file_root.get_submenu()
             self._menu_item(menu, "Abrir ROM bootstrap…", self._choose_bootstrap_rom)
+            menu.append(Gtk.SeparatorMenuItem())
+            self._menu_item(menu, "Abrir RAM/NVRAM…", self._choose_ram)
+            self._menu_item(menu, "Usar RAM predeterminada", self._use_default_ram)
             self.bootstrap_toggle = self._check_item(
                 menu, "Usar ROM bootstrap al arrancar", self._toggle_bootstrap_rom)
             self.bootstrap_toggle.set_active(session.settings["bootstrap_enabled"] == "1")
@@ -456,8 +459,11 @@ class ManagedWindow(ui.AS2KWindow):
 
     def _check_core(self):
         if session.core is not None and session.core.poll() is not None:
-            self.status.set_text("El núcleo terminó; revisar ~/.local/state/as2k/core.log")
-            session.stop()
+            try:
+                session.stop()
+                self.status.set_text("El núcleo terminó; RAM verificada.")
+            except (OSError, RuntimeError, ValueError) as exc:
+                self.status.set_text("Núcleo terminado; RAM sin confirmar: " + str(exc))
         return True
 
     def _change_boot(self, item, value):
@@ -546,6 +552,41 @@ class ManagedWindow(ui.AS2KWindow):
         except (OSError, ValueError) as exc:
             error_dialog(self, exc)
 
+    def _choose_ram(self, *_args):
+        path = self._choose_file("Seleccionar RAM/NVRAM AlphaSmart 2000 (128 KiB)")
+        if path is not None:
+            self._activate_ram(path)
+
+    def _use_default_ram(self, *_args):
+        self._activate_ram(None)
+
+    def _activate_ram(self, path):
+        # An active session must finish writing the previous image FIRST.
+        # Never switch the selected file before MAME exits cleanly.
+        try:
+            if path is not None and not valid_ram(path):
+                raise ValueError("La RAM seleccionada debe medir exactamente 131072 bytes.")
+            session.stop()
+            session.select_ram(path)
+            if session.ready():
+                session.start(self)
+                self._frame_cache = None
+                self.frame_mtime_ns = -1
+            active = session.settings["ram_file"] or str(RAM_DEFAULT)
+            self.status.set_text("Archivo RAM activo: " + active)
+        except (OSError, ValueError, RuntimeError) as exc:
+            error_dialog(self, exc)
+
+    def _on_delete_event(self, *args):
+        if super()._on_delete_event(*args):
+            return True
+        try:
+            session.stop()
+        except (OSError, RuntimeError, ValueError) as exc:
+            error_dialog(self, "No se cerró AS2K porque la RAM no se guardó: " + str(exc))
+            return True
+        return False
+
     def _folder(self, name):
         try:
             session.open_folder(name)
@@ -611,7 +652,10 @@ def main():
         if not session.ready():
             configure_dialog()
         if session.ready():
-            session.start()
+            try:
+                session.start()
+            except (OSError, RuntimeError, ValueError) as exc:
+                error_dialog(None, exc)
         return ManagedApplication().run(sys.argv[:1])
     finally:
         session.stop()
