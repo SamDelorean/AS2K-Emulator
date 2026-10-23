@@ -32,7 +32,7 @@ for f in "$RELEASE_ROOT/frontend/as2k_ui.py" \
 done
 # Preflight canonical frontend, not older pinned ARMv7 source.
 python3 -B "$RELEASE_ROOT/tests/test_view_scale.py" || {
-    echo "BLOCKED: Stable LCD 100/150/200 regression failed"
+    echo "BLOCKED: Stable LCD 100/200/300 regression failed"
     exit 3
 }
 python3 -B "$RELEASE_ROOT/tests/test_virtual_button_rows.py" || {
