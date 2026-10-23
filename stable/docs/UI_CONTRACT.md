@@ -73,6 +73,12 @@ The mouse controls are arranged in **two horizontal rows**, preserving button or
 
 There is **no virtual Esc button**. The physical host keyboard Escape mapping is retained.
 
+The two rows are **independently centered** in the available viewport, like centered
+text lines. All 16 buttons share one horizontal GTK SizeGroup; the longest
+lower-row label defines their natural width, with 72×34 logical pixels as
+the common minimum button footprint (not a hard maximum). Both rows retain
+horizontal scrolling for windows narrower than their natural content width.
+
 Ordinary QWERTY keys remain physical-keyboard input. Every virtual special key must create the
 same matrix transition as the corresponding AlphaSmart key.
 
