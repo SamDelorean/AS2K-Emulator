@@ -35,6 +35,10 @@ python3 -B "$RELEASE_ROOT/tests/test_view_scale.py" || {
     echo "BLOCKED: Stable LCD 100/150/200 regression failed"
     exit 3
 }
+python3 -B "$RELEASE_ROOT/tests/test_virtual_button_rows.py" || {
+    echo "BLOCKED: Stable centered-button layout regression failed"
+    exit 3
+}
 mkdir -p "$STAGE/usr/local/libexec/as2k/frontend" \
          "$STAGE/usr/local/bin" "$STAGE/usr/local/share/applications"
 install -m 0755 "$BIN" "$STAGE/usr/local/libexec/as2k/as2k-bin"
