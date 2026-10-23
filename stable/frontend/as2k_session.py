@@ -214,10 +214,11 @@ class Session:
         original = target.read_bytes()
         if len(original) != NVRAM_BYTES:
             raise ValueError("El archivo RAM cambió mientras se leía.")
-        write_ram(working, original)
-        # Exclusive marker protects an unsynchronized working copy on failure.
+        # Lock BEFORE touching the workspace: never overwrite another live run.
+        directory.mkdir(parents=True, exist_ok=True)
         with pending.open("x", encoding="utf-8") as out:
             out.write(str(target) + "\n")
+        write_ram(working, original)
         self.active_nvram = working
         self.nvram_directory = directory
         self.external_ram = target
@@ -307,13 +308,20 @@ class Session:
             core_env["SDL_VIDEODRIVER"] = "dummy"
             cmd += ["-video", "none"]
         # An overriding script would disable safe shutdown and NVRAM saving.
-        if any(arg.lower().startswith("-autoboot_script") for arg in sys.argv[1:]):
-            raise ValueError("No se admite sobrescribir el script de cierre seguro de AS2K.")
+        if any(arg.lower().startswith(("-autoboot_script", "-nvram_directory", "-nonvram_save"))
+               for arg in sys.argv[1:]):
+            raise ValueError("No se permite sobrescribir las opciones de persistencia RAM.")
         cmd.extend(sys.argv[1:])
         try:
             self.core = subprocess.Popen(cmd, stdout=self.log, stderr=subprocess.STDOUT,
                                          env=core_env)
         except OSError:
+            # Popen failed: the new workspace was never used by MAME.
+            if self.pending_marker is not None:
+                self.pending_marker.unlink(missing_ok=True)
+                self.pending_marker = None
+                self.external_ram = None
+                self.external_digest = None
             self.stop()
             raise
         return True
