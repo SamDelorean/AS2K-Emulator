@@ -96,7 +96,8 @@ adjuntos binarios públicos sin revisión legal/proveniencia.
 
 ## Protección de instalaciones posteriores — escala GTK (22-oct-2026)
 
-- Rama `main`: interfaz corregida, gestor de sesión corregido y
+- Rama `main` y snapshot `release/stable-2026.10.22-gtk-scale-install-guard`:
+  interfaz corregida, gestor de sesión corregido y
   `stable/tests/test_view_scale.py` unidos al código fuente de Stable.
 - `stable/scripts/validate-stable-static.sh`: ejecuta el test de
   100/150/200 (también en `--check` Vontar).
