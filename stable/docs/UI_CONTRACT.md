@@ -28,8 +28,8 @@ controllers). The stable palette remains the established AlphaSmart grey pair.
 The user-selectable presentation modes are exactly:
 
 - 100%;
-- 150%;
 - 200%;
+- 300%;
 - full screen.
 
 Full screen never hides the AS2K header, menu bar, IR line or the two special-key rows. It only gives the
@@ -62,7 +62,7 @@ The controls represent emulated external conditions. They are not decorative GUI
 
 ### Ver
 
-Only 100%, 150%, 200% and full screen are offered.
+Only 100%, 200%, 300% and full screen are offered.
 
 ## Virtual special keys
 
@@ -116,7 +116,7 @@ Screenshot captures the logical LCD, not desktop chrome, and opens Save As for P
 
 Video records only the logical LCD, no audio. The user selects `Iniciar grabación`, later
 `Detener y guardar…`, and only then chooses the final MP4 path. Stable uses H.264/MP4 and
-nearest-neighbor enlargement so the LCD pixels remain crisp. UI scale (100/150/200/fullscreen)
+nearest-neighbor enlargement so the LCD pixels remain crisp. UI scale (100/200/300/fullscreen)
 does not alter the logical recording source.
 
 If the application is closed during recording, it must offer save/discard/cancel rather than
