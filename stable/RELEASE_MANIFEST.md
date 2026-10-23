@@ -166,3 +166,15 @@ Esta intervención **es posterior** a la publicación del instalador descrita ar
 - La regresión estática `stable/tests/test_virtual_button_rows.py` se ejecuta ahora desde `stable/scripts/validate-stable-static.sh` y desde los instaladores `stable/scripts/install-stable.sh` y `stable/platform/surf/surface-native-install.sh`, **antes de modificar `/usr/local`**.
 - Conserva las dos filas de ocho botones centradas, ancho común mínimo de 72 píxeles, ausencia de Esc virtual y Escape de teclado físico. Complementa, sin reemplazar, `test_view_scale.py`.
 - Actualización solamente en GitHub; **no se ejecutaron de nuevo los instaladores ni Commander**. Los PASS anteriores corresponden a la versión de UI instalada en los equipos; no atribuir una nueva instalación a esta protección de scripts.
+
+## Nuevo selector LCD 100/200/300 — despliegue Surf y VONTAR (22-oct-2026)
+
+Esta revisión es **posterior** a los informes históricos del primer hotfix 100/150/200 y a la afinación de botones. No se modifican las ramas de conservación; las opciones activas en `main` son **100 %, 200 % y 300 %** (1×, 2×, 3×), más pantalla completa. El 150 % se retira. La ventana integrada **mantiene el 200 % inicial** desde `as2k_session.py`, que no se modificó.
+
+- Dimensiones LCD del modo ventana: 240×36, 480×72 y 720×108 píxeles. Pantalla completa conserva adaptación proporcional.
+- Fuente `stable/frontend/as2k_ui.py`: blob Git `f78cc8d15d762f015502a9640ff2a7fd5b47a457`. `stable/tests/test_view_scale.py`: blob `3bfca48d38995f1d4a079ede311014bf737b1917`. La regresión nueva verifica menú exacto, rechazo de 1.5, dibujo real AST, límites de pantalla y selección inicial de 200 %.
+- **Surf (ARMv7)**: `AS2K_STABLE_VIEW_100_200_300_HEADLESS_PASS`, `AS2K_STABLE_BUTTON_TWO_ROWS_NO_ESC_STATIC_PASS`, `AS2K_STABLE_BUTTON_CENTERED_UNIFORM_STATIC_PASS`, sintaxis PASS, instalación del frontend y hash final PASS, código de salida 0. Respaldo: `/home/user/.local/share/alphasmart/audits/as2k/scale-100-200-300-20261022.XXlNKaEB`.
+- **VONTAR (AArch64)**: mismas tres pruebas, sintaxis PASS, instalación/hash PASS y código de salida 0. Respaldo: `/home/spc/.local/share/alphasmart/audits/as2k/scale-100-200-300-20261022.iREn6JPo`.
+- En ambos equipos se comprobó por hash que el binario MAME no cambió; `as2k_session.py` permaneció sin modificar. Sin compilación, ROM, DictROM, NVRAM o cierre forzado de aplicaciones.
+- **GUI_INTERACTIVE=PENDING_REOPEN** en ambos equipos. Cerrar y volver a abrir AS2K antes de evaluar visualmente el nuevo menú. Las pruebas headless y la coincidencia de hashes **no** implican aceptación visual.
+- Uso Commander: dos llamadas por equipo para lanzar y verificar; ninguna otra operación remota.
