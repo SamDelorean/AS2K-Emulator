@@ -254,7 +254,7 @@ class AS2KWindow(Gtk.ApplicationWindow):
         bar.append(view_root)
         scale_group = None
         self._scale_menu_items = {}
-        for label, scale in (("100 %", 1.0), ("150 %", 1.5), ("200 %", 2.0)):
+        for label, scale in (("100 %", 1.0), ("200 %", 2.0), ("300 %", 3.0)):
             item = Gtk.RadioMenuItem.new_with_label(scale_group, label)
             scale_group = item.get_group()
             item.connect("toggled", self._on_scale_selected, scale)
@@ -334,7 +334,7 @@ class AS2KWindow(Gtk.ApplicationWindow):
         return False
 
     def _set_scale(self, scale: float) -> None:
-        if scale not in (1.0, 1.5, 2.0):
+        if scale not in (1.0, 2.0, 3.0):
             raise ValueError("Escala LCD no admitida")
         self.ui_scale = scale
         self.lcd_area.set_size_request(int(LCD_WIDTH * scale), int(LCD_HEIGHT * scale))
