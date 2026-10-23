@@ -35,7 +35,7 @@ def main():
     assert 'EXIT_REQUEST.write_text("EXIT\\n"' in stop_source
     assert "self.core.wait(timeout=12)" in stop_source
     assert "not valid_ram(self.active_nvram)" in stop_source
-    assert "NVRAM_BYTES" in stop_source
+    assert "NVRAM_BYTES = 0x20000" in src
     assert "atomic_write(EXIT_SCRIPT, EXIT_LUA)" in start_source
     assert '"-autoboot_script", str(EXIT_SCRIPT)' in start_source
     assert 'core_env["AS2K_EXIT_REQUEST"] = str(EXIT_REQUEST)' in start_source
