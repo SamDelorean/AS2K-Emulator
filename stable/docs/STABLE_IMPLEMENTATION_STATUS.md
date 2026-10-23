@@ -274,3 +274,38 @@ Closed scope:
 5. perform human functional acceptance on the installed application.
 
 Payload execution and unrelated diagnostic work remain out of scope.
+
+## RAM/NVRAM persistence regression — STATIC_FINDING (22-oct-2026)
+
+**Scope: only Stable GTK session lifecycle.** DIAG already uses the ordinary MAME
+NVRAM subsystem successfully and must not be redesigned or mixed with Stable.
+
+- Core already declares 128 KiB shared NVRAM (`0x20000`), four 32 KiB
+  bank entries and `NVRAM(config, "nvram", DEFAULT_ALL_0)`.
+- Stable session already sets `-nvram_directory` to the user's
+  `~/.local/share/as2k/nvram`; MAME's native filename for the root NVRAM
+  device is `asma2k/nvram` beneath that directory.
+- Donor MAME `running_machine::run()` calls `nvram_load()` at start and
+  `nvram_save()` on normal exit; `nvram_save()` uses create-path options.
+  No secondary DynFS, RAM serialization or custom binary writer is needed.
+- Regression localized: `stable/frontend/as2k_session.py::Session.stop()`
+  currently invokes `Popen.terminate()` and escalates to `kill()`;
+  abrupt termination can bypass `running_machine::run()`'s NVRAM save.
+- Minimal correction to verify: trigger an ordinary MAME exit using the
+  existing UI/core bridge and wait for completion *before* re-launching
+  or changing the selected NVRAM; preserve exact MAME native format and
+  its work-directory semantics. If the current bridge lacks an exit command,
+  assess a single narrow command before any core rebuild; do not infer
+  that SIGTERM or SIGINT performs an orderly MAME exit.
+- Selected external RAM file is a second, bounded UI-path option, not a
+  justification for creating a new memory subsystem; use validated
+  131072-byte images and avoid overwriting user data.
+- Earlier untested source changes in the core and manager were **reverted**
+  to the installed baseline Git blobs: `alphasma.cpp`
+  `d6409067d2c64719e41ac5871952b85f9297b4e0` and
+  `as2k_session.py` `97803b2dc85c7ca9483ce971aa780d94f13ea6a9`.
+  No Commander, native compile, or installation was run for this finding.
+
+**State: ROOT_CAUSE_STATIC_IDENTIFIED; PATCH_NOT_APPLIED;
+PERSISTENCE_RUNTIME_NOT_YET_VALIDATED.** A focused close/reopen test with a
+non-sensitive dummy NVRAM is sufficient once the shutdown behavior is corrected.
