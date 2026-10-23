@@ -37,7 +37,7 @@ EXIT_REQUEST = RUNTIME / "as2k-exit.request"
 EXIT_SCRIPT = RUNTIME / "as2k-exit.lua"
 # MAME already uses this Lua API in its runtime keyboard tests. Requesting
 # manager.machine:exit() returns through its normal NVRAM save path.
-EXIT_LUA = """\\
+EXIT_LUA = """
 local request = assert(os.getenv("AS2K_EXIT_REQUEST"))
 emu.register_frame_done(function()
     local file = io.open(request, "rb")
@@ -146,7 +146,7 @@ class Session:
             if self.core.poll() is None:
                 # Let MAME leave its run loop and execute nvram_save().
                 # Do not send SIGTERM/SIGKILL: they bypass the save.
-                EXIT_REQUEST.write_text("EXIT\\n", encoding="ascii")
+                EXIT_REQUEST.write_text("EXIT\n", encoding="ascii")
                 try:
                     code = self.core.wait(timeout=12)
                 except subprocess.TimeoutExpired as exc:
