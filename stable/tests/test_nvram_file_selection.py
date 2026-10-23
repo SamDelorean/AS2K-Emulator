@@ -51,8 +51,9 @@ def main():
         subset = ast.ClassDef(name="RamSession", bases=[], keywords=[],
                               body=[methods[n] for n in ("select_ram", "prepare_ram", "stop")],
                               decorator_list=[])
-        exec(compile(ast.Module(body=helpers + [subset], type_ignores=[]),
-                     str(SOURCE), "exec"), globals_)
+        module = ast.fix_missing_locations(ast.Module(
+            body=helpers + [subset], type_ignores=[]))
+        exec(compile(module, str(SOURCE), "exec"), globals_)
         Session = globals_["RamSession"]
         def new_session():
             s = Session()
