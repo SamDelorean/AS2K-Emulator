@@ -1,7 +1,7 @@
 # AS2K Stable — integración de Vontar y Surf
 
 **Mantenimiento 2026-10-22:** la reparación del menú **Ver →
-100 % / 150 % / 200 %** está incluida en `main` y en la
+100 % / 200 % / 300 %** está incluida en `main` y en la
 ramas `release/stable-2026.10.22-vontar-view-scale` (primer hotfix)
 y `release/stable-2026.10.22-gtk-scale-install-guard` (instaladores
 protegidos). Las instalaciones
@@ -9,8 +9,9 @@ canónicas comprueban automáticamente el menú antes de copiar el
 frontend, y verifican que el archivo instalado corresponde al probado.
 La actualización GTK no requiere recompilar MAME. En Vontar quedó
 instalada y validada estáticamente; su aceptación visual sigue
-pendiente de una reapertura del programa. En Surf el cambio está en
-fuentes, sin una nueva instalación.
+pendiente de una reapertura del programa. En Surf se instaló también el frontend corregido posteriormente;
+consultar el manifiesto para distinguir sus comprobaciones estáticas de la
+aceptación gráfica pendiente.
 
 **Fecha de publicación fuente:** 2026-10-21. **Rama:**
 `release/stable-2026.10.21-vontar-surf`.
@@ -54,7 +55,7 @@ El gestor añade Abrir ROM bootstrap y uso al arrancar.
 Infrarrojo activo; el gestor añade Bootstrap/inicio, selección
 stock/DictROM y aplicación mediante reinicio.
 
-**Ver:** 100 %, 150 %, 200 %, pantalla completa, visualización
+**Ver:** 100 %, 200 %, 300 %, pantalla completa, visualización
 integrada de un panel o dos ventanas SDL.
 
 **Configuración:** rutas de trabajo, ROM/DictROM/arranque,
@@ -135,7 +136,7 @@ y reparación de despertar por PC en Vontar.
 ### Garantía del menú Ver en instalaciones posteriores
 
 `python3 -B stable/tests/test_view_scale.py` verifica con los métodos
-reales de la interfaz las tres escalas de LCD (1×, 1.5×, 2×), la
+reales de la interfaz las tres escalas de LCD (1×, 2×, 3×), la
 selección inicial de 200 % en la ventana integrada, la adaptación a
 pantalla completa y la reducción al espacio disponible si es necesario.
 Es una prueba automática sin servidor gráfico, no sustituye la
