@@ -160,3 +160,9 @@ Esta intervención **es posterior** a la publicación del instalador descrita ar
 - **VONTAR**: idénticas pruebas e instalación PASS; salida 0. Respaldo `/home/spc/.local/share/alphasmart/audits/as2k/centered-keyrows-20261022.j5ipN2iB`.
 - Núcleo MAME y gestor de sesión comprobados sin cambios en ambos equipos; sin nueva compilación ni cierre GTK forzado. Dos llamadas Commander por equipo: arranque y comprobación final.
 - **GUI_INTERACTIVE=PENDING_REOPEN** en Surf y VONTAR: requieren reapertura manual para confirmar el centrado y la legibilidad con el tema GTK real. No adjudicar GUI_PASS hasta observación.
+
+### Protección de la distribución de botones en instalaciones posteriores
+
+- La regresión estática `stable/tests/test_virtual_button_rows.py` se ejecuta ahora desde `stable/scripts/validate-stable-static.sh` y desde los instaladores `stable/scripts/install-stable.sh` y `stable/platform/surf/surface-native-install.sh`, **antes de modificar `/usr/local`**.
+- Conserva las dos filas de ocho botones centradas, ancho común mínimo de 72 píxeles, ausencia de Esc virtual y Escape de teclado físico. Complementa, sin reemplazar, `test_view_scale.py`.
+- Actualización solamente en GitHub; **no se ejecutaron de nuevo los instaladores ni Commander**. Los PASS anteriores corresponden a la versión de UI instalada en los equipos; no atribuir una nueva instalación a esta protección de scripts.
