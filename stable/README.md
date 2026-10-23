@@ -1,5 +1,15 @@
 # AS2K Stable — integración de Vontar y Surf
 
+**Mantenimiento 2026-10-22:** la reparación del menú **Ver →
+100 % / 150 % / 200 %** está incluida en `main` y en la
+rama `release/stable-2026.10.22-vontar-view-scale`. Las instalaciones
+canónicas comprueban automáticamente el menú antes de copiar el
+frontend, y verifican que el archivo instalado corresponde al probado.
+La actualización GTK no requiere recompilar MAME. En Vontar quedó
+instalada y validada estáticamente; su aceptación visual sigue
+pendiente de una reapertura del programa. En Surf el cambio está en
+fuentes, sin una nueva instalación.
+
 **Fecha de publicación fuente:** 2026-10-21. **Rama:**
 `release/stable-2026.10.21-vontar-surf`.
 Este directorio es un paquete de **producto estable** autosuficiente
@@ -26,9 +36,11 @@ de sesión real de Vontar y la integración nativa para Surf.
 | `RELEASE_MANIFEST.md` | Evidencias, hashes y limitaciones |
 
 Los nombres `install-as2k.sh`, `install-as2k-surface.sh` y
-`scripts/install-surface-local.sh` se conservan como antecedentes
-históricos y **no son el camino canónico nuevo para Surf**. Algunos
-pueden descargar otros commits o reinstalar paquetes.
+`scripts/install-surface-local.sh` quedan **bloqueados** en `main`:
+anteriormente descargaban commits viejos que podían reinstalar el
+fallo de escalas. Se conservan como antecedentes, pero ahora deben
+utilizarse los instaladores canónicos indicados arriba. Los scripts
+de *otras ramas históricas* no se modifican automáticamente.
 
 ## Menús exactos incluidos
 
@@ -117,6 +129,25 @@ en un incremento funcional separado, sin alterar la UI restante.
 Siguen sin prueba renovada la interfaz gráfica Surf tras el
 integrador publicado, recuperación de NVRAM tras terminación brusca,
 y reparación de despertar por PC en Vontar.
+
+### Garantía del menú Ver en instalaciones posteriores
+
+`python3 -B stable/tests/test_view_scale.py` verifica con los métodos
+reales de la interfaz las tres escalas de LCD (1×, 1.5×, 2×), la
+selección inicial de 200 % en la ventana integrada, la adaptación a
+pantalla completa y la reducción al espacio disponible si es necesario.
+Es una prueba automática sin servidor gráfico, no sustituye la
+aceptación manual de GTK.
+
+El instalador Vontar la ejecuta mediante
+`stable/scripts/validate-stable-static.sh` y vuelve a pasarla antes
+de copiar el frontend. El instalador Surf también la ejecuta y
+comprueba que `as2k_ui.py` y `as2k_session.py` instalados sean
+idénticos a los del paquete fuente.
+
+Después de actualizar una interfaz Python ya abierta, es necesario
+cerrar y volver a abrir AS2K para utilizar el código nuevo.
+**Vontar compila a `-j3` por defecto; Surf conserva `-j1`**.
 
 [Manifiesto](RELEASE_MANIFEST.md) ·
 [Contrato](docs/UI_CONTRACT.md) ·
