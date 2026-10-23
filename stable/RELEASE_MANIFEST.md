@@ -194,3 +194,17 @@ Esta revisión es **posterior** a los informes históricos del primer hotfix 100
 - Commander por equipo: tres llamadas en VONTAR (lanzar y dos comprobaciones), tres en Surf. No se interrumpieron las GUI.
 - **Pendiente:** cerrar y reabrir voluntariamente la ventana GTK y observar persistencia de un documento real de un arranque al siguiente. No declarar PASS visual o de datos personales sin esta comprobación.
 - **Fuera de RAM-01:** menú para escoger un archivo RAM específico, previsto como incremento separado reutilizando el directorio NVRAM nativo.
+
+## RAM-02 — selección de RAM/NVRAM persistente (22-oct-2026)
+
+**Desplegado en Surf y VONTAR, sin recompilación ni modificación del núcleo MAME.**
+
+- Nuevo menú **Archivo → Abrir archivo RAM/NVRAM…** para elegir un archivo de 131072 bytes y **Archivo → Usar RAM predeterminada** para volver al perfil local. El archivo escogido se recuerda en el mismo `~/.config/as2k/session.json` mediante `ram_file`; el arranque posterior recupera la selección.
+- El perfil predeterminado conserva `~/.local/share/as2k/nvram/asma2k/nvram`: se crea automáticamente con 128 KiB a cero **solo si falta**, sin sobreescribir ni convertir el formato existente. MAME sigue cargando/guardando su NVRAM normal.
+- Para RAM externa, el frontend presenta a MAME el mismo nombre relativo `asma2k/nvram` bajo un directorio de trabajo privado asociado al archivo elegido; importa los bytes originales y los exporta al archivo elegido **únicamente después de cierre ordenado exitoso**. Evita modificaciones externas inesperadas mediante SHA256, guarda una copia previa del archivo seleccionado en `~/.local/share/as2k/ram-backups/` y escribe el cambio de manera atómica. Un marcador `ram-pending` impide perder una copia de trabajo pendiente después de cierre fallido, interrupción o ejecución concurrente.
+- Código canónico `stable/frontend/as2k_session.py` Git blob `5e6d820912c175d4a8a3494b9b676b89eefc4240`. Núcleo C++ `stable/src/mame/skeleton/alphasma.cpp` sin cambios. Pruebas `stable/tests/test_nvram_orderly_shutdown.py` y `stable/tests/test_nvram_file_selection.py` incorporadas a validación estática y preflight de instaladores.
+- **VONTAR:** `AS2K_STABLE_NVRAM_NATIVE_SHUTDOWN_STATIC_PASS`, `AS2K_STABLE_NVRAM_SESSION_STOP_MOCK_PASS`, `AS2K_STABLE_RAM02_SELECT_DEFAULT_AND_REMEMBER_PASS`, `AS2K_STABLE_RAM02_EXTERNAL_SYNC_BACKUP_AND_CONFLICT_PASS`, sintaxis PASS, hash final PASS, código 0. Respaldo `/home/spc/.local/share/alphasmart/audits/as2k/ram02-select-20261022.uI9tzjS5`.
+- **Surf:** mismas cuatro pruebas, sintaxis y hash final PASS; código 0. Respaldo `/home/user/.local/share/alphasmart/audits/as2k/ram02-select-20261022.XXaGAdGe`.
+- Todas las pruebas de RAM-02 se ejecutaron en entornos temporales con contenidos sintéticos, sin leer/modificar los archivos RAM personales y sin cerrar sesiones GTK reales. La compatibilidad de lectura/guardado **nativos** de MAME había superado ya los dos ciclos funcionales aislados de RAM-01 en ambos equipos.
+- **GUI_INTERACTIVE=PENDING_REOPEN:** probar desde la interfaz nueva selección manual, cambio de perfil y recuperación al reiniciar. No declarar test funcional de documentos reales todavía.
+- **Nota de actualización sin reinicio:** si el gestor GTK llevaba abierto desde antes de RAM-01, seguirá usando en memoria el cierre antiguo hasta reiniciar; preservar/exportar los documentos actualmente abiertos antes de cerrar esa instancia antigua.
