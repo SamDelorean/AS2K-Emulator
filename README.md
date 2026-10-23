@@ -1,10 +1,13 @@
 # AS2K Emulator — AlphaSmart 2000 Stable
 
 **Publicación de código fuente Stable: 2026-10-21; mantenimiento GTK: 2026-10-22.**
-La corrección de **Ver → 100 %, 200 %, 300 %** está en los
-archivos fuente y los instaladores canónicos de `main`. Todos
-ejecutan `stable/tests/test_view_scale.py` para evitar reinstalar el
-menú defectuoso. [Informe de Vontar](stable/docs/VONTAR_VIEW_SCALE_FIX_20261022.md).
+La revisión vigente **Ver → 100 %, 200 %, 300 %** está en los
+archivos fuente y los instaladores canónicos de `main`, con prueba
+obligatoria `stable/tests/test_view_scale.py`. Fue instalada y probada
+estáticamente en **VONTAR y Surf**, sin recompilar MAME; queda pendiente
+la aceptación visual tras reapertura. El selector anterior 100/150/200
+se conserva solo como antecedente en las ramas e informes históricos.
+[Estado actual y evidencia](stable/RELEASE_MANIFEST.md).
 
 Distribución pública
 del emulador AlphaSmart 2000 (MAME reducido) con **una estructura de producto
