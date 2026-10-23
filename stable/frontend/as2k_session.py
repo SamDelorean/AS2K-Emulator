@@ -276,6 +276,10 @@ class Session:
         # MAME persists its configuration while exiting. Stop first, then
         # apply bootstrap selection to avoid overwriting the new mode.
         self.stop()
+        # Reject overrides before creating or locking the selected RAM workspace.
+        if any(arg.lower().startswith(("-autoboot_script", "-nvram_directory", "-nonvram_save"))
+               for arg in sys.argv[1:]):
+            raise ValueError("No se permite sobrescribir las opciones de persistencia RAM.")
         self.update_boot_cfg()
         self.prepare_ram()
         EXIT_REQUEST.unlink(missing_ok=True)
@@ -307,10 +311,6 @@ class Session:
         else:
             core_env["SDL_VIDEODRIVER"] = "dummy"
             cmd += ["-video", "none"]
-        # An overriding script would disable safe shutdown and NVRAM saving.
-        if any(arg.lower().startswith(("-autoboot_script", "-nvram_directory", "-nonvram_save"))
-               for arg in sys.argv[1:]):
-            raise ValueError("No se permite sobrescribir las opciones de persistencia RAM.")
         cmd.extend(sys.argv[1:])
         try:
             self.core = subprocess.Popen(cmd, stdout=self.log, stderr=subprocess.STDOUT,
