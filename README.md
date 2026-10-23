@@ -6,7 +6,7 @@ archivos fuente y los instaladores canónicos de `main`. Todos
 ejecutan `stable/tests/test_view_scale.py` para evitar reinstalar el
 menú defectuoso. [Informe de Vontar](stable/docs/VONTAR_VIEW_SCALE_FIX_20261022.md).
 
- Distribución pública
+Distribución pública
 del emulador AlphaSmart 2000 (MAME reducido) con **una estructura de producto
 común a ASPRO Stable**, sin mezclar el producto con `as2k-diag`.
 
