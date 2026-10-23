@@ -56,6 +56,10 @@ for name in sys.argv[1:]:
 PY_STATIC
 sh "$ROOT/scripts/validate-ui-static.sh"
 
+# Gate future Stable installations against the no-op 100/150/200% menu.
+# Headless AST-based test exercises actual GTK drawing/selection methods.
+python3 -B "$ROOT/tests/test_view_scale.py"
+
 grep -F '@PREFIX@/bin/as2k' "$ROOT/packaging/as2k.desktop.in" >/dev/null \
     || fail "desktop template does not target installed stable launcher"
 
