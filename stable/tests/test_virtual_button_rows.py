@@ -43,7 +43,15 @@ def main():
     assert "row.pack_start(button, False, False, 0)" in fragment
     assert "keys.pack_start(button" not in fragment
     assert actual[:8] == expected[:8] and actual[8:] == expected[8:]
+    # Both Word-like lines must be centered; GTK shares the widest
+    # natural button width across all 16 labels, with a 72x34 minimum.
+    assert "key_rows.set_halign(Gtk.Align.CENTER)" in fragment
+    assert "row.set_halign(Gtk.Align.CENTER)" in fragment
+    assert "key_sizes = Gtk.SizeGroup.new(Gtk.SizeGroupMode.HORIZONTAL)" in fragment
+    assert "button.set_size_request(72, 34)" in fragment
+    assert "key_sizes.add_widget(button)" in fragment
     print("AS2K_STABLE_BUTTON_TWO_ROWS_NO_ESC_STATIC_PASS")
+    print("AS2K_STABLE_BUTTON_CENTERED_UNIFORM_STATIC_PASS")
 
 
 if __name__ == "__main__":
