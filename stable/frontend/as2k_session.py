@@ -31,6 +31,23 @@ RUNTIME = (Path(os.environ["XDG_RUNTIME_DIR"]) / "as2k") if os.environ.get("XDG_
 SETTINGS = CONFIG / "session.json"
 CFG = CONFIG / "cfg" / "asma2k.cfg"
 VALID_SIZES = {"firmware": (0x8000, 0x81e5), "dictrom": (0x20000,)}
+NVRAM_FILE = DATA / "nvram" / "asma2k" / "nvram"
+NVRAM_BYTES = 0x20000
+EXIT_REQUEST = RUNTIME / "as2k-exit.request"
+EXIT_SCRIPT = RUNTIME / "as2k-exit.lua"
+# MAME already uses this Lua API in its runtime keyboard tests. Requesting
+# manager.machine:exit() returns through its normal NVRAM save path.
+EXIT_LUA = """\\
+local request = assert(os.getenv("AS2K_EXIT_REQUEST"))
+emu.register_frame_done(function()
+    local file = io.open(request, "rb")
+    if file then
+        file:close()
+        manager.machine:exit()
+    end
+end, "as2k_graceful_exit")
+"""
+
 
 def atomic_write(path, content):
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -127,12 +144,26 @@ class Session:
     def stop(self):
         if self.core is not None:
             if self.core.poll() is None:
-                self.core.terminate()
+                # Let MAME leave its run loop and execute nvram_save().
+                # Do not send SIGTERM/SIGKILL: they bypass the save.
+                EXIT_REQUEST.write_text("EXIT\\n", encoding="ascii")
                 try:
-                    self.core.wait(timeout=4)
-                except subprocess.TimeoutExpired:
-                    self.core.kill()
-                    self.core.wait(timeout=3)
+                    code = self.core.wait(timeout=12)
+                except subprocess.TimeoutExpired as exc:
+                    raise RuntimeError(
+                        "No se confirmó el cierre normal de MAME. "
+                        "El núcleo permanece activo para proteger la RAM."
+                    ) from exc
+            else:
+                code = self.core.returncode
+            if code != 0:
+                raise RuntimeError(
+                    "MAME terminó con error (%s); la RAM no se considera guardada." % code
+                )
+            if not NVRAM_FILE.is_file() or NVRAM_FILE.stat().st_size != NVRAM_BYTES:
+                raise RuntimeError(
+                    "MAME terminó, pero no generó una NVRAM válida de 131072 bytes."
+                )
             self.core = None
         if self.log:
             self.log.close()
@@ -145,6 +176,12 @@ class Session:
         # apply bootstrap selection to avoid overwriting the new mode.
         self.stop()
         self.update_boot_cfg()
+        if NVRAM_FILE.exists() and (
+            not NVRAM_FILE.is_file() or NVRAM_FILE.stat().st_size != NVRAM_BYTES
+        ):
+            raise ValueError("La NVRAM existente tiene un tamaño incorrecto; no se sobrescribe.")
+        EXIT_REQUEST.unlink(missing_ok=True)
+        atomic_write(EXIT_SCRIPT, EXIT_LUA)
         for name in ("control.queue", "events.queue"):
             (RUNTIME / name).write_text("", encoding="utf-8")
         (RUNTIME / "lcd.bin").unlink(missing_ok=True)
@@ -160,17 +197,21 @@ class Session:
                "-rom1", str(fw), "-rom2", self.settings["dictrom"], "-rompath", str(fw.parent),
                "-cfg_directory", str(CONFIG / "cfg"), "-nvram_directory", str(DATA / "nvram"),
                "-snapshot_directory", str(DATA / "output"), "-state_directory", str(STATE / "states"),
-               "-sound", "none"]
+               "-sound", "none", "-autoboot_script", str(EXIT_SCRIPT)]
         display = os.environ.get("AS2K_DISPLAY_MODE", self.settings["display_mode"])
         # Keep the SDL driver choice local to MAME, not the GTK process.
         # On Armbian, -video none alone still leaves an X11 window behind.
         core_env = os.environ.copy()
+        core_env["AS2K_EXIT_REQUEST"] = str(EXIT_REQUEST)
         if display == "sdl":
             core_env["SDL_VIDEODRIVER"] = "x11"
             cmd += ["-window", "-nomaximize", "-video", "soft"]
         else:
             core_env["SDL_VIDEODRIVER"] = "dummy"
             cmd += ["-video", "none"]
+        # An overriding script would disable safe shutdown and NVRAM saving.
+        if any(arg.lower().startswith("-autoboot_script") for arg in sys.argv[1:]):
+            raise ValueError("No se admite sobrescribir el script de cierre seguro de AS2K.")
         cmd.extend(sys.argv[1:])
         try:
             self.core = subprocess.Popen(cmd, stdout=self.log, stderr=subprocess.STDOUT,
@@ -249,6 +290,16 @@ def configure_dialog(parent=None):
     return accepted
 
 class ManagedWindow(ui.AS2KWindow):
+    def _on_delete_event(self, *args):
+        if super()._on_delete_event(*args):
+            return True
+        try:
+            session.stop()
+        except (OSError, RuntimeError) as exc:
+            error_dialog(self, "No se cerró AS2K: " + str(exc))
+            return True
+        return False
+
     # Byte-wide, C-optimized LCD expansion; no nested per-pixel Python loops.
     def _poll_frame_file(self):
         if self.display_mode == "sdl":
@@ -365,8 +416,11 @@ class ManagedWindow(ui.AS2KWindow):
 
     def _check_core(self):
         if session.core is not None and session.core.poll() is not None:
-            self.status.set_text("El núcleo terminó; revisar ~/.local/state/as2k/core.log")
-            session.stop()
+            try:
+                session.stop()
+                self.status.set_text("Núcleo finalizado; archivo RAM verificado.")
+            except (OSError, RuntimeError) as exc:
+                self.status.set_text("NVRAM no verificada: " + str(exc))
         return True
 
     def _change_boot(self, item, value):
