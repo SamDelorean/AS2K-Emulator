@@ -1,5 +1,12 @@
 # AS2K Stable en Surface RT — integración ARMv7/musl
 
+**Selector actual instalado en Surf (22-oct-2026): 100 %, 200 %, 300 %.**
+La prueba `AS2K_STABLE_VIEW_100_200_300_HEADLESS_PASS` y la instalación
+del archivo GTK correcto terminaron PASS; el 200 % sigue siendo el
+tamaño inicial y la validación visual tras reapertura está pendiente.
+El registro antiguo 100/150/200 que figura más abajo describe exclusivamente
+la primera corrección histórica.
+
 **Frontend actualizado (22-oct-2026):** el instalador copia los
 archivos `as2k_ui.py` y `as2k_session.py` del checkout actual de
 `stable/`, ejecuta la regresión automática `tests/test_view_scale.py`
