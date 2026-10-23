@@ -1,5 +1,12 @@
 # AS2K Stable en Surface RT — integración ARMv7/musl
 
+**Frontend actualizado (22-oct-2026):** el instalador copia los
+archivos `as2k_ui.py` y `as2k_session.py` del checkout actual de
+`stable/`, ejecuta la regresión automática `tests/test_view_scale.py`
+antes de instalar y comprueba sus bytes después. Esto evita reinstalar
+el defecto del menú Ver (100/150/200). Es una mejora del paquete fuente:
+**no constituye una reinstalación en Surf ni un PASS GTK interactivo**.
+
 ## Procedimiento realmente recuperado
 
 La Surface RT ya dispone de un árbol MAME preparado en
