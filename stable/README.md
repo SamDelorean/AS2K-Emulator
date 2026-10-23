@@ -48,6 +48,7 @@ de *otras ramas históricas* no se modifican automáticamente.
 ## Menús exactos incluidos
 
 **Archivo:** Abrir ROM, Abrir DictROM, Bootstrap (archivo y desactivar),
+abrir archivo RAM/NVRAM (128 KiB), volver a RAM predeterminada,
 captura de pantalla PNG, inicio/detención de grabación MP4, salir.
 El gestor añade Abrir ROM bootstrap y uso al arrancar.
 
