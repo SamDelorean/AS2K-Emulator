@@ -1,17 +1,17 @@
 # AS2K Stable — integración de Vontar y Surf
 
-**Mantenimiento 2026-10-22:** la reparación del menú **Ver →
-100 % / 200 % / 300 %** está incluida en `main` y en la
-ramas `release/stable-2026.10.22-vontar-view-scale` (primer hotfix)
-y `release/stable-2026.10.22-gtk-scale-install-guard` (instaladores
-protegidos). Las instalaciones
-canónicas comprueban automáticamente el menú antes de copiar el
-frontend, y verifican que el archivo instalado corresponde al probado.
-La actualización GTK no requiere recompilar MAME. En Vontar quedó
-instalada y validada estáticamente; su aceptación visual sigue
-pendiente de una reapertura del programa. En Surf se instaló también el frontend corregido posteriormente;
-consultar el manifiesto para distinguir sus comprobaciones estáticas de la
-aceptación gráfica pendiente.
+**Mantenimiento 2026-10-22:** el selector vigente en `main` es
+**Ver → 100 % / 200 % / 300 %**, y la ventana integrada conserva 200 %
+como escala inicial. La antigua gama 100/150/200 pertenece a las ramas
+históricas `release/stable-2026.10.22-vontar-view-scale` y
+`release/stable-2026.10.22-gtk-scale-install-guard`, que no se alteran.
+Los instaladores canónicos de `main` ejecutan pruebas para impedir
+regresiones antes de copiar el frontend.
+
+El nuevo selector quedó **instalado y comprobado estáticamente tanto
+en Surf como en VONTAR**, sin recompilar MAME ni modificar el gestor
+de sesión. La aceptación gráfica permanece pendiente de reapertura
+del programa. [Evidencia](RELEASE_MANIFEST.md).
 
 **Fecha de publicación fuente:** 2026-10-21. **Rama:**
 `release/stable-2026.10.21-vontar-surf`.
