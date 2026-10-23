@@ -1,6 +1,12 @@
 # AS2K Emulator — AlphaSmart 2000 Stable
 
-**Publicación de código fuente Stable: 2026-10-21.** Distribución pública
+**Publicación de código fuente Stable: 2026-10-21; mantenimiento GTK: 2026-10-22.**
+La corrección de **Ver → 100 %, 150 %, 200 %** está en los
+archivos fuente y los instaladores canónicos de `main`. Todos
+ejecutan `stable/tests/test_view_scale.py` para evitar reinstalar el
+menú defectuoso. [Informe de Vontar](stable/docs/VONTAR_VIEW_SCALE_FIX_20261022.md).
+
+ Distribución pública
 del emulador AlphaSmart 2000 (MAME reducido) con **una estructura de producto
 común a ASPRO Stable**, sin mezclar el producto con `as2k-diag`.
 
