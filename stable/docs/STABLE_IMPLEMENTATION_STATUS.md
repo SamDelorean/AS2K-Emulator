@@ -320,3 +320,17 @@ Esta sección **sustituye el estado STATIC_FINDING / PATCH_NOT_APPLIED** de la s
 - **NATIVE RUNTIME PASS (aislado):** ambas máquinas crearon automáticamente NVRAM de 131072 bytes tras salida normal, y efectuaron un segundo arranque y cierre conservando el mismo archivo. Sin acceso de escritura a la RAM de trabajo real, ROM o DictROM.
 - **GUI INTERACTIVE PENDING:** tras reapertura del GTK instalado, realizar una comprobación humana mínima de documento que sobrevive cierre y reapertura. El selector de RAM particular no forma parte del presente incremento.
 - Las protecciones de los instaladores ejecutan ahora `tests/test_nvram_orderly_shutdown.py` antes de reemplazar componentes.
+
+## RAM-02 — selected NVRAM reuse (22-oct-2026)
+
+The existing native MAME RAM path is preserved. Selecting any existing
+128 KiB RAM through the GTK File menu records it in `session.json`,
+selects a private working directory following MAME's native
+`asma2k/nvram` layout, and returns bytes to the external image on a
+verified graceful exit. The default auto-created NVRAM is untouched by
+external selections. Safe atomic replacement, stale-work detection,
+conflict validation and one backup are restricted to the frontend.
+
+**STATIC/MOCK PASS + INSTALL PASS on VONTAR and Surf**, Git blob
+`5e6d820912c175d4a8a3494b9b676b89eefc4240`.
+Neither core was rebuilt. No real GUI-document cycle was run.
