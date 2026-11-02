@@ -32,7 +32,6 @@ class TestBridge(TestCase):
     def test_no_implicit_printer(self):
         with TemporaryDirectory() as d, patch.object(m.shutil,"which",return_value="/bin/false"), patch.object(m,"find_pdf_ppd",return_value=Path("/tmp/mock.ppd")),patch.object(m.subprocess,"run",return_value=subprocess.CompletedProcess([],0,b"%PDF-1.4\nx",b"")) as sp:
             src=Path(d)/"in.pcl"; src.write_bytes(HP5)
-            self.assertEqual(m.main(),2) if False else None
             with patch("sys.argv",["as2k_pcl_to_pdf.py",str(src),str(Path(d)/"out.pdf")]):
                 self.assertEqual(m.main(),0)
             self.assertEqual(sp.call_count,1) # cupsfilter only, never lp
