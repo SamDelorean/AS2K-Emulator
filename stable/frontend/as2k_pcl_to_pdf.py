@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
-"""Convert the verified AS2000 HP/PCL-text subset to PDF through CUPS filters."""
+"""Bridge verified AS2000 HP2/HP5 PCL text to PDF and modern CUPS printers.
+
+Host-side only; physical printing requires an explicit --printer destination.
+"""
 from __future__ import annotations
 
+import argparse
 import pathlib
 import shutil
 import subprocess
@@ -10,8 +14,11 @@ import sys
 PCL_COMMANDS = (
     b"\x1b&k3G", b"\x1b&s0C", b"\x1b&a08L", b"\x1b&a70M",
     b"\x1b&l05E", b"\x1b&l3D", b"\x1b&l0H", b"\x1b(8U", b"\x1bE",
+    b"\x1b(s1P", b"\x1b&l3@",
 )
 MAX_JOB = 200_000
+MAX_PDF = 10_000_000
+MODERN_PCL = b"\x1b(s1P\x1b&l3@"
 
 
 def parse_observed_hp_text(raw: bytes) -> list[list[str]]:
@@ -19,6 +26,15 @@ def parse_observed_hp_text(raw: bytes) -> list[list[str]]:
         raise ValueError("Not the verified HP/PCL-text profile")
     if not raw.endswith(b"\x1b&l0H\x1bE"):
         raise ValueError("Incomplete HP/PCL-text job")
+    if len(raw) > MAX_JOB:
+        raise ValueError("Oversized printer job")
+    # HP5 is a pair of *observed* PCL commands after the stock charset header.
+    # No arbitrary PCL program execution or interpretation is attempted.
+    if b"\x1b(s1P" in raw or b"\x1b&l3@" in raw:
+        if (raw.count(MODERN_PCL) != 1 or raw.count(b"\x1b(s1P") != 1
+                or raw.count(b"\x1b&l3@") != 1
+                or b"\x1b(8U" + MODERN_PCL not in raw):
+            raise ValueError("Incomplete or unexpected modern PCL preset")
 
     pages: list[list[str]] = [[]]
     line: list[str] = []
@@ -95,13 +111,40 @@ def find_pdf_ppd() -> pathlib.Path:
     raise RuntimeError("No generic PDF PPD found; install cups-filters")
 
 
-def main() -> int:
-    if len(sys.argv) != 3:
-        print("Usage: as2k_pcl_to_pdf.py INPUT.pcl OUTPUT.pdf", file=sys.stderr)
-        return 2
+def cups_destinations() -> list[str]:
+    """Enumerate available CUPS queues, including driverless IPP destinations."""
+    lpstat = shutil.which("lpstat")
+    if not lpstat:
+        raise RuntimeError("lpstat is not installed")
+    r = subprocess.run([lpstat, "-e"], capture_output=True, text=True,
+                       timeout=10, check=False)
+    if r.returncode:
+        raise RuntimeError("Unable to query CUPS destinations")
+    return [n.strip() for n in r.stdout.splitlines() if n.strip()]
 
-    source = pathlib.Path(sys.argv[1])
-    target = pathlib.Path(sys.argv[2])
+
+def submit_pdf(pdf: pathlib.Path, printer: str) -> str:
+    """Send to a verified queue only after an explicit --printer request."""
+    if not printer or printer not in cups_destinations():
+        raise ValueError("Destination is not an available CUPS printer")
+    lp = shutil.which("lp")
+    if not lp:
+        raise RuntimeError("lp is not installed")
+    r = subprocess.run([lp, "-d", printer, "-t", "AS2K Writer", "--", str(pdf)],
+                       capture_output=True, text=True, timeout=20, check=False)
+    if r.returncode:
+        raise RuntimeError("CUPS print submission failed: " + r.stderr[-500:])
+    return r.stdout.strip()
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="AS2K PCL2/5 to PDF and CUPS/IPP printer")
+    parser.add_argument("source", metavar="INPUT.pcl", type=pathlib.Path)
+    parser.add_argument("target", metavar="OUTPUT.pdf", type=pathlib.Path)
+    parser.add_argument("--printer", metavar="CUPS_QUEUE",
+                        help="optional explicit physical printing via this CUPS destination")
+    args = parser.parse_args()
+    source, target = args.source, args.target
     if not source.is_file() or source.stat().st_size > MAX_JOB:
         raise ValueError("Missing or oversized printer job")
 
@@ -119,8 +162,8 @@ def main() -> int:
     if result.returncode:
         detail = result.stderr.decode("utf-8", "replace").strip()[-1200:]
         raise RuntimeError(f"CUPS PDF conversion failed: {detail}")
-    if not result.stdout.startswith(b"%PDF-"):
-        raise RuntimeError("CUPS did not return a PDF document")
+    if not result.stdout.startswith(b"%PDF-") or len(result.stdout) > MAX_PDF:
+        raise RuntimeError("CUPS did not return a valid bounded PDF document")
 
     target.parent.mkdir(parents=True, exist_ok=True)
     staged = target.with_name("." + target.name + ".as2k-staged")
@@ -131,6 +174,9 @@ def main() -> int:
         staged.unlink(missing_ok=True)
 
     print(f"AS2K_CUPS_PDF_PASS pages={len(pages)} bytes={len(result.stdout)} output={target}")
+    if args.printer:
+        receipt = submit_pdf(target, args.printer)
+        print(f"AS2K_CUPS_PRINT_SUBMITTED queue={args.printer} receipt={receipt}")
     return 0
 
 
